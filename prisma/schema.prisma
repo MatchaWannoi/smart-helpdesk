@@ -1,0 +1,172 @@
+// ==========================================
+// 1. GENERATOR & DATASOURCE
+// ==========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // ตอน dev จะใช้ sqlite ก็เปลี่ยนเป็น "sqlite" ได้ (ดูหมายเหตุท้ายไฟล์)
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// 2. ENUMS
+// ==========================================
+// enum คือ "ค่าคงที่ที่เลือกได้จากลิสต์ที่กำหนดไว้" เท่านั้น
+// ป้องกันการพิมพ์ผิด เช่น พิมพ์ "aprove" แทน "APPROVED"
+
+enum Role {
+  USER  // ผู้แจ้งปัญหา
+  STAFF // เจ้าหน้าที่
+  ADMIN // ผู้ดูแลระบบ
+}
+
+enum Category {
+  NETWORK  // เครือข่าย
+  HARDWARE // ฮาร์ดแวร์
+  SOFTWARE // ซอฟต์แวร์
+  ACCOUNT  // บัญชีผู้ใช้
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TicketStatus {
+  OPEN        // สร้างแล้ว รอมอบหมาย
+  ASSIGNED    // มอบหมายเจ้าหน้าที่แล้ว
+  IN_PROGRESS // เจ้าหน้าที่กำลังดำเนินการ
+  RESOLVED    // แก้ไขแล้ว รอผู้ใช้ยืนยัน/ประเมิน
+  CLOSED      // ปิดเคสสมบูรณ์
+}
+
+enum SenderType {
+  USER
+  AI
+  STAFF
+}
+
+// ==========================================
+// 3. MODELS (ตาราง)
+// ==========================================
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+
+  // เฉพาะ role = STAFF ใช้ระบุความเชี่ยวชาญ ช่วย Process 6 (มอบหมายงาน)
+  specialty Category?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ----- Relations -----
+  // ตั๋วที่ "ตัวเอง" เป็นคนแจ้ง (Process 2, 5)
+  ticketsCreated  Ticket[] @relation("TicketOwner")
+  // ตั๋วที่ "ตัวเอง" ถูกมอบหมายให้ดูแล ใช้ตอน role = STAFF (Process 6, 7)
+  ticketsAssigned Ticket[] @relation("TicketAssignee")
+
+  ownedThreadMessages Message[] @relation("MessageOwner") // ข้อความที่อยู่ใน thread ของ user คนนี้
+  sentMessages        Message[] @relation("MessageSender") // ข้อความที่ user คนนี้เป็นคนเขียนเอง
+
+  evaluations Evaluation[]
+
+  @@index([role])
+}
+
+model Ticket {
+  id       String       @id @default(cuid())
+
+  // ----- Foreign Keys -----
+  userId   String
+  user     User         @relation("TicketOwner", fields: [userId], references: [id])
+
+  assignedStaffId String?
+  assignedStaff   User?  @relation("TicketAssignee", fields: [assignedStaffId], references: [id])
+
+  // ----- ข้อมูลจาก AI (Process 3-4) -----
+  category   Category?
+  urgency    Urgency?
+  aiConfident Boolean  @default(false) // AI มั่นใจไหม ถ้า false → ต้องสร้าง ticket แน่นอน (Process 5)
+
+  // ----- ข้อมูลตั๋ว -----
+  title          String?
+  status         TicketStatus @default(OPEN)
+  resolutionNote String?      // เจ้าหน้าที่บันทึกวิธีแก้ (Process 7)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+
+  // ----- Relations -----
+  messages   Message[]
+  evaluation Evaluation? // 1 ticket ประเมินได้ครั้งเดียว (one-to-one)
+
+  @@index([status])
+  @@index([category])
+  @@index([assignedStaffId])
+}
+
+model Message {
+  id String @id @default(cuid())
+
+  // ticket เป็น null ได้ตอนที่ยังแชทอยู่ก่อนสร้าง ticket จริง
+  ticketId String?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id])
+
+  userId String
+  user   User   @relation("MessageOwner", fields: [userId], references: [id])
+
+  senderId   String
+  sender     User       @relation("MessageSender", fields: [senderId], references: [id])
+  senderType SenderType
+
+  content String @db.Text
+
+  // เก็บผลลัพธ์ดิบจาก Gemini (category, urgency, faqMatch) ไว้ debug
+  // Json ใช้เก็บโครงสร้างข้อมูลที่ยืดหยุ่น ไม่ต้อง fix column ตายตัว
+  aiMeta Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([userId, createdAt])
+  @@index([createdAt]) // ใช้เร่งความเร็ว query ตอน polling (ดึงข้อความใหม่กว่า timestamp ล่าสุด)
+}
+
+model FAQ {
+  id       String    @id @default(cuid())
+  question String
+  answer   String    @db.Text
+  category Category?
+  keywords String[]  // array ของคำ ใช้ pre-filter ก่อนส่งเข้า Gemini ลด token ที่ใช้
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Evaluation {
+  id String @id @default(cuid())
+
+  // unique ทำให้ 1 ticket ผูกกับ evaluation ได้แค่ 1 อัน (one-to-one relation)
+  ticketId String @unique
+  ticket   Ticket @relation(fields: [ticketId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  rating  Int    // 1-5 ดาว (ควร validate ที่ฝั่ง application ว่าอยู่ในช่วง 1-5)
+  comment String?
+
+  createdAt DateTime @default(now())
+}

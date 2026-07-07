@@ -1,0 +1,1 @@
+export const AI_SYSTEM_USER_ID = "ai-system-bot";
