@@ -1,144 +1,214 @@
-# Smart Helpdesk with AI — สรุปแผนโปรเจค
+# Smart Helpdesk with AI - สรุปโปรเจกต์ปัจจุบัน
 
-## 1. ภาพรวมโปรเจค
+## 1. ภาพรวมโปรเจกต์
 
-**ชื่อระบบ:** Smart Helpdesk with AI
-**ประเภทงาน:** Mini Project (งานเดี่ยว)
-**หลักการ:** ระบบจัดการคำร้องและช่วยเหลือผู้ใช้งานด้วย AI ช่วยวิเคราะห์ปัญหา จัดหมวดหมู่ แนะนำ FAQ และสร้าง Ticket ส่งต่อเจ้าหน้าที่เมื่อแก้ไขเองไม่ได้ พร้อมติดตามสถานะจนปิดเคส
+**ชื่อระบบ:** Smart Helpdesk with AI  
+**ประเภทงาน:** Mini Project  
+**รูปแบบระบบ:** Web application แบบ full-stack ในโปรเจกต์เดียว  
+**ภาษาหลัก:** TypeScript  
+**Framework หลัก:** Next.js 16 App Router
 
-**เงื่อนไขจากอาจารย์:**
-- งานเดี่ยว ทำระบบ
-- อย่างน้อย 5-8 process ตามความยากง่ายของโปรเจค
-- นำเสนอชื่อระบบ วันอังคารที่ 30/06/69
-- เขียน Process คร่าวๆ ว่าทำกี่ Process อะไรบ้าง
+ระบบนี้เป็น Helpdesk สำหรับให้ผู้ใช้สมัครสมาชิก เข้าสู่ระบบ และแจ้งปัญหาผ่านหน้าแชท จากนั้นระบบจะบันทึกข้อความ เรียก Gemini เพื่อวิเคราะห์หมวดหมู่ ความเร่งด่วน และ FAQ ที่เกี่ยวข้อง แล้วตอบกลับผู้ใช้ผ่านข้อความ AI ในแชทเดียวกัน
 
----
+สถานะปัจจุบันของโค้ด:
 
-## 2. Process หลัก (8 ขั้นตอน)
-
-| # | Process | ความยาก | รายละเอียด |
-|---|---------|---------|-----------|
-| 1 | สมัครสมาชิก / เข้าสู่ระบบ | ง่าย | Auth พื้นฐาน แยก 3 บทบาท: ผู้ใช้ / เจ้าหน้าที่ / ผู้ดูแล |
-| 2 | แจ้งปัญหา/สร้างคำร้อง (แชทไม่ real-time) | ง่าย-ปานกลาง | หน้าตาเป็น chat bubble บันทึกเป็น message list + poll ดึงข้อความใหม่ทุก 3-5 วิ ไม่ใช้ WebSocket |
-| 3 | AI วิเคราะห์ข้อความและจัดหมวดหมู่ปัญหา | **ยากที่สุด** | เรียก Gemini API (ฟรี) ส่ง prompt กำหนดหมวดหมู่ล่วงหน้า (เครือข่าย/ฮาร์ดแวร์/ซอฟต์แวร์/บัญชีผู้ใช้) ให้ตอบกลับเป็น JSON ระบุหมวดหมู่ + ความเร่งด่วน |
-| 4 | ระบบแนะนำ FAQ หรือแนวทางแก้ไขเบื้องต้น | ปานกลาง | ส่งรายการ FAQ ทั้งหมดไปพร้อม prompt เดียวกับ process 3 ให้ AI เลือกคำตอบที่ใกล้เคียงที่สุด (รวม logic กับ process 3 ในฟังก์ชันเดียว) |
-| 5 | หากยังแก้ไขไม่ได้ ระบบสร้าง Ticket | ง่าย | เปลี่ยนสถานะอัตโนมัติเมื่อ AI ไม่มั่นใจ หรือผู้ใช้กด "ยังแก้ไม่ได้" |
-| 6 | ผู้ดูแลมอบหมายเจ้าหน้าที่รับผิดชอบ | ปานกลาง | เลือกจาก dropdown ตามหมวดหมู่ที่ AI จัดไว้ |
-| 7 | เจ้าหน้าที่ดำเนินการและอัปเดตสถานะ | ง่าย-ปานกลาง | หน้าจอเจ้าหน้าที่เปลี่ยนสถานะ Ticket + บันทึกการแก้ไข |
-| 8 | ผู้ใช้ประเมินผลการให้บริการ | ง่าย | ให้คะแนน 1-5 ดาว ผูกกับ Ticket ที่ปิดแล้ว |
+- มีระบบสมัครสมาชิกและเข้าสู่ระบบด้วย Auth.js/NextAuth v5
+- มีหน้าแชทสำหรับผู้ใช้
+- มี API สำหรับดึงและส่งข้อความ
+- มี `lib/gemini.ts` สำหรับ Process 3-4: วิเคราะห์ข้อความและแนะนำ FAQ ด้วย Gemini
+- มี Prisma schema สำหรับ User, Ticket, Message, FAQ และ Evaluation
+- ยังไม่มีหน้าจอ/route สำหรับจัดการ Ticket, Admin, Staff และ Evaluation แบบครบ flow
 
 ---
 
-## 3. Tech Stack ที่เลือก
+## 2. Process หลักของระบบ
 
-เลือก **Next.js เดี่ยว** (Frontend + Backend ในโปรเจคเดียว) เพื่อลดความเสี่ยงด้านเวลา แต่ยังได้เรียนรู้เทคโนโลยีใหม่ครบ
+| # | Process | สถานะในโค้ดปัจจุบัน | รายละเอียด |
+|---|---|---|---|
+| 1 | สมัครสมาชิก / เข้าสู่ระบบ | ทำแล้วบางส่วน | สมัครสมาชิกผ่าน `app/api/register/route.ts`, login ผ่าน Auth.js credentials provider |
+| 2 | แจ้งปัญหาผ่านแชท | ทำแล้ว | หน้า `app/chat/page.tsx`, hook `hooks/useChatMessages.ts`, API `app/api/messages/route.ts` |
+| 3 | AI วิเคราะห์ข้อความและจัดหมวดหมู่ | ทำแล้ว | `lib/gemini.ts` เรียก Gemini และคืน `category`, `urgency`, `confident` |
+| 4 | AI แนะนำ FAQ หรือข้อความตอบกลับ | ทำแล้ว | pre-filter FAQ จาก keyword ก่อนส่งเข้า Gemini แล้วบันทึกผลใน `Message.aiMeta` |
+| 5 | สร้าง Ticket เมื่อ AI ไม่มั่นใจ | ยังไม่ทำ | Prisma schema รองรับแล้ว แต่ยังไม่มี API/logic สร้าง ticket จากแชท |
+| 6 | Admin มอบหมายเจ้าหน้าที่ | ยังไม่ทำ | Prisma schema มี `assignedStaffId` และ `specialty` แล้ว แต่ยังไม่มีหน้าจอ |
+| 7 | Staff ดำเนินการและอัปเดตสถานะ | ยังไม่ทำ | Prisma schema มี `TicketStatus` และ `resolutionNote` แล้ว |
+| 8 | ผู้ใช้ประเมินผลบริการ | ยังไม่ทำ | Prisma schema มี `Evaluation` แล้ว แต่ยังไม่มี UI/API |
 
-| ส่วน | เทคโนโลยี | เหตุผล |
+---
+
+## 3. Tech Stack ที่ใช้จริง
+
+| ส่วน | เทคโนโลยี | หมายเหตุ |
 |---|---|---|
-| Framework | Next.js (App Router) | Frontend + Backend (API Routes) ในตัวเดียว ไม่ต้อง setup 2 โปรเจค |
-| ฐานข้อมูล | PostgreSQL (หรือ SQLite ตอน dev) | รองรับ relational data ของ Ticket/User/FAQ |
-| ORM | Prisma | เขียน schema ง่าย, type-safe, ลดบั๊ก query |
-| Authentication | NextAuth.js (Auth.js) | Role-based session สำเร็จรูป |
-| UI/Styling | Tailwind CSS + shadcn/ui | ได้หน้าตาสวยเร็ว |
-| AI API | **Google AI Studio (Gemini API) — ฟรีถาวร** | โควตาราว 1,500 request/วัน (Gemini Flash), ตอบ JSON ได้แม่นยำ, รองรับภาษาไทย |
-| AI สำรอง | Groq (ฟรีถาวร) | เผื่อไว้กรณี Gemini มีปัญหาวันนำเสนอ |
-| Hosting (ถ้าต้อง deploy) | Vercel (ฟรี) | Deploy จาก Next.js ได้ทันที |
+| Language | TypeScript | ใช้กับ frontend, route handlers, Prisma seed |
+| Framework | Next.js 16.2.10 App Router | ใช้ `app/` directory และ Route Handlers |
+| UI | React 19.2.4 + Tailwind CSS 4 | ยังไม่ได้ใช้ shadcn/ui ในโครงสร้างปัจจุบัน |
+| Authentication | NextAuth/Auth.js v5 beta | ใช้ `auth()` จากไฟล์ `auth.ts` |
+| Database | PostgreSQL | ตั้งค่าผ่าน `DATABASE_URL` และ `DIRECT_URL` |
+| ORM | Prisma 6.19.3 | schema อยู่ที่ `prisma/schema.prisma` |
+| AI | Google Gemini API | ใช้ package `@google/generative-ai` และ model `gemini-2.5-flash` |
+| Password Hashing | bcryptjs | ใช้ใน register, credentials login และ seed |
+| Dev tooling | ESLint, TypeScript | ตรวจด้วย `npm.cmd run lint` และ `npx.cmd tsc --noEmit` |
 
-**หมายเหตุสำคัญ:** อย่าใส่ข้อมูลจริงของผู้ใช้ตอนทดสอบ/นำเสนอ เพราะผู้ให้บริการ AI ฟรีบางรายอาจเก็บ prompt ไปใช้พัฒนาโมเดล ให้ใช้ mock data แทน
+หมายเหตุ: path alias `@/*` ชี้ไปที่ root ของโปรเจกต์ ไม่ใช่ `src/` ตาม `tsconfig.json`
 
 ---
 
-## 4. Folder Structure
+## 4. โครงสร้างโฟลเดอร์ปัจจุบัน
 
-```
+```text
 smart-helpdesk/
-│
-├── prisma/
-│   ├── schema.prisma              # User, Ticket, Message, FAQ, Category
-│   └── seed.ts                    # ข้อมูลตัวอย่างสำหรับ demo
-│
-├── src/
-│   ├── app/
-│   │   ├── (auth)/
-│   │   │   ├── login/page.tsx
-│   │   │   └── register/page.tsx
-│   │   │
-│   │   ├── (main)/
-│   │   │   ├── chat/page.tsx                 # Process 2
-│   │   │   ├── tickets/
-│   │   │   │   ├── page.tsx
-│   │   │   │   └── [id]/page.tsx             # Process 8 (ประเมินผล)
-│   │   │   ├── admin/
-│   │   │   │   ├── dashboard/page.tsx
-│   │   │   │   ├── assign/page.tsx           # Process 6
-│   │   │   │   └── faq/page.tsx
-│   │   │   └── staff/
-│   │   │       └── my-tickets/page.tsx       # Process 7
-│   │   │
-│   │   ├── api/
-│   │   │   ├── auth/[...nextauth]/route.ts   # Process 1
-│   │   │   ├── messages/route.ts             # Process 2 (POST/GET, polling)
-│   │   │   ├── ai/analyze/route.ts           # Process 3-4 (เรียก Gemini)
-│   │   │   ├── tickets/
-│   │   │   │   ├── route.ts                  # Process 5
-│   │   │   │   └── [id]/
-│   │   │   │       ├── route.ts              # Process 7
-│   │   │   │       └── assign/route.ts       # Process 6
-│   │   │   └── evaluations/route.ts          # Process 8
-│   │   │
-│   │   ├── layout.tsx
+├── app/
+│   ├── api/
+│   │   ├── auth/
+│   │   │   └── [...nextauth]/
+│   │   │       └── route.ts
+│   │   ├── messages/
+│   │   │   └── route.ts
+│   │   └── register/
+│   │       └── route.ts
+│   ├── chat/
 │   │   └── page.tsx
-│   │
-│   ├── components/
-│   │   ├── ui/                     # shadcn/ui
-│   │   ├── chat/ (ChatWindow, ChatBubble, ChatInput)
-│   │   ├── tickets/ (TicketCard, TicketStatusBadge, EvaluationForm)
-│   │   └── dashboard/StatsChart.tsx
-│   │
-│   ├── lib/
-│   │   ├── prisma.ts
-│   │   ├── auth.ts
-│   │   ├── gemini.ts                # ฟังก์ชันหลักเรียก Gemini API + prompt template
-│   │   └── utils.ts
-│   │
-│   └── types/index.ts
-│
-├── .env.local                      # DATABASE_URL, GEMINI_API_KEY, NEXTAUTH_SECRET
-└── package.json
+│   ├── login/
+│   │   └── page.tsx
+│   ├── register/
+│   │   └── page.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   └── chat/
+│       ├── ChatBubble.tsx
+│       └── ChatInput.tsx
+├── hooks/
+│   └── useChatMessages.ts
+├── lib/
+│   ├── constants.ts
+│   ├── gemini.ts
+│   └── prisma.ts
+├── prisma/
+│   ├── schema.prisma
+│   └── seed.ts
+├── auth.ts
+├── middleware.ts
+├── next-auth.d.ts
+├── next.config.ts
+├── package.json
+└── tsconfig.json
 ```
 
-**จุดสำคัญ:** `src/lib/gemini.ts` คือไฟล์หัวใจของระบบ ทำ process 3 และ 4 พร้อมกันในฟังก์ชันเดียว (รับข้อความ → ส่งพร้อมรายการ FAQ → รับ JSON กลับที่มีหมวดหมู่ + ความเร่งด่วน + FAQ ที่ใกล้เคียง)
+จุดสำคัญ:
+
+- โปรเจกต์นี้ไม่ได้ใช้ `src/`
+- API อยู่ใน `app/api/**/route.ts`
+- helper กลางอยู่ใน `lib/`
+- Auth.js config อยู่ที่ root: `auth.ts`
+- Gemini logic อยู่ที่ `lib/gemini.ts`
 
 ---
 
-## 5. แผนการดำเนินงาน (3 สัปดาห์)
+## 5. ไฟล์สำคัญ
 
-**สัปดาห์ที่ 1**
-- วันที่ 1-2: ออกแบบฐานข้อมูล (`schema.prisma`) + ทำระบบ login/role
-- วันที่ 3-5: ทำหน้าแชทแจ้งปัญหา + ตาราง Messages + polling
-
-**สัปดาห์ที่ 2 (จุดเสี่ยงที่สุด — เริ่มแต่เช้าสัปดาห์)**
-- วันที่ 6: สมัคร Google AI Studio, ขอ API key, ทดสอบเรียก Gemini แบบง่ายก่อน
-- วันที่ 7-9: ออกแบบ prompt ให้วิเคราะห์ข้อความ + ตอบ JSON (หมวดหมู่/ความเร่งด่วน/FAQ)
-- วันที่ 10-11: เชื่อมผลลัพธ์ AI เข้ากับหน้าแชท ให้ตอบกลับพร้อมปุ่ม "แก้ไขแล้ว" / "ยังไม่หาย"
-
-**สัปดาห์ที่ 3**
-- วันที่ 12-13: Process 5-6 (สร้าง Ticket อัตโนมัติ + มอบหมายเจ้าหน้าที่)
-- วันที่ 14-16: Process 7-8 (อัปเดตสถานะ + ประเมินผล)
-- วันที่ 17-18: ทดสอบระบบทั้งหมด (UAT), แก้บั๊ก, เตรียม slide นำเสนอ
-
----
-
-## 6. ความเสี่ยงที่ต้องระวัง
-
-- **Process 3-4 (AI)** เป็นจุดเสี่ยงสูงสุด ควรเริ่มทดสอบเชื่อม Gemini API ตั้งแต่ต้นสัปดาห์ที่ 2 ไม่ปล่อยไว้ท้ายสุด
-- Gemini free tier มีโควตาจำกัดต่อวัน ต้องมี error handling รองรับ ถ้า API ล้มเหลวให้ fallback สร้าง Ticket แบบไม่ระบุหมวดหมู่ ไม่ให้ระบบค้าง
-- ห้ามใส่ข้อมูลจริงตอน demo เพราะ AI ฟรีบางเจ้าอาจเก็บ prompt ไปใช้เทรนโมเดล ใช้ mock data แทน
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `auth.ts` | ตั้งค่า Auth.js/NextAuth v5 ด้วย credentials provider และ session callback |
+| `app/api/auth/[...nextauth]/route.ts` | export Auth.js route handlers |
+| `app/api/register/route.ts` | สมัครสมาชิกและ hash password |
+| `app/api/messages/route.ts` | GET ข้อความในแชท และ POST ข้อความใหม่พร้อมข้อความตอบกลับจาก AI |
+| `lib/gemini.ts` | pre-filter FAQ, สร้าง prompt, เรียก Gemini, parse JSON และ fallback เมื่อ AI ล้มเหลว |
+| `lib/prisma.ts` | PrismaClient singleton สำหรับ dev hot reload |
+| `lib/constants.ts` | เก็บ `AI_SYSTEM_USER_ID` |
+| `hooks/useChatMessages.ts` | polling ข้อความทุก 4 วินาที และส่งข้อความจากหน้าแชท |
+| `components/chat/ChatBubble.tsx` | แสดงข้อความ USER/AI/STAFF |
+| `components/chat/ChatInput.tsx` | ช่องพิมพ์และปุ่มส่งข้อความ |
+| `prisma/schema.prisma` | data model และ enum ของระบบ |
+| `prisma/seed.ts` | seed user, AI system user, FAQ, ticket และ message ตัวอย่าง |
 
 ---
 
-## 7. ขั้นตอนต่อไป
+## 6. Data Model หลัก
 
-- [ ] ร่าง `prisma/schema.prisma` ฉบับเต็ม
-- [ ] ร่าง prompt ตัวอย่างสำหรับเรียก Gemini API (รับข้อความจากแชท → ตอบ JSON หมวดหมู่ + FAQ)
-- [ ] เริ่มเขียนโค้ด Process 1 (Auth) ก่อนตามลำดับที่วางไว้
+Prisma schema ปัจจุบันมี model หลักดังนี้:
+
+- `User`: ผู้ใช้ระบบ มี role `USER`, `STAFF`, `ADMIN`
+- `Ticket`: คำร้อง/เคส รองรับ category, urgency, status, assigned staff และ resolution note
+- `Message`: ข้อความในแชทหรือ ticket thread มี `senderType` และ `aiMeta`
+- `FAQ`: คำถาม-คำตอบพร้อม category และ keywords สำหรับ pre-filter ก่อนส่งเข้า AI
+- `Evaluation`: คะแนนและความคิดเห็นหลังปิด ticket
+
+Enum หลัก:
+
+- `Role`: `USER`, `STAFF`, `ADMIN`
+- `Category`: `NETWORK`, `HARDWARE`, `SOFTWARE`, `ACCOUNT`
+- `Urgency`: `LOW`, `MEDIUM`, `HIGH`
+- `TicketStatus`: `OPEN`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`
+- `SenderType`: `USER`, `AI`, `STAFF`
+
+---
+
+## 7. Flow ที่ทำงานแล้ว
+
+### Register
+
+1. ผู้ใช้กรอก name, email, password
+2. API ตรวจข้อมูลและเช็ก email ซ้ำ
+3. hash password ด้วย bcryptjs
+4. สร้าง user role เริ่มต้นเป็น `USER`
+
+### Login
+
+1. Auth.js credentials provider รับ email/password
+2. ค้นหา user จาก Prisma
+3. เทียบ password ด้วย bcryptjs
+4. ใส่ `id` และ `role` ลง session
+
+### Chat + AI
+
+1. หน้า chat เรียก `GET /api/messages` เพื่อโหลดข้อความ
+2. hook ทำ polling ทุก 4 วินาที
+3. เมื่อผู้ใช้ส่งข้อความ จะเรียก `POST /api/messages`
+4. API บันทึกข้อความ user
+5. API เรียก `analyzeMessage()` ใน `lib/gemini.ts`
+6. Gemini ตอบ JSON: category, urgency, confident, suggestedFaqId, aiReplyMessage
+7. API บันทึกข้อความ AI และเก็บ metadata ใน `aiMeta`
+8. frontend โหลดข้อความใหม่และแสดงในแชท
+
+---
+
+## 8. Environment Variables
+
+ควรมีค่าเหล่านี้ใน `.env`:
+
+```env
+DATABASE_URL="postgresql://..."
+DIRECT_URL="postgresql://..."
+AUTH_SECRET="..."
+GEMINI_API_KEY="..."
+```
+
+หมายเหตุ: หากไม่มี `GEMINI_API_KEY` ระบบจะ fallback เป็นคำตอบส่งต่อเจ้าหน้าที่ และไม่ทำให้ request ค้าง
+
+---
+
+## 9. คำสั่งที่ใช้บ่อย
+
+```bash
+npm.cmd run dev
+npm.cmd run lint
+npx.cmd tsc --noEmit
+npx.cmd prisma generate
+npx.cmd prisma db seed
+```
+
+บน Windows PowerShell อาจต้องใช้ `npm.cmd` และ `npx.cmd` แทน `npm`/`npx` หาก execution policy บล็อกไฟล์ `.ps1`
+
+---
+
+## 10. งานถัดไปที่ควรทำ
+
+- สร้าง logic Process 5: ถ้า `aiResult.confident === false` ให้สร้าง Ticket อัตโนมัติ
+- เพิ่มหน้า list/detail ticket สำหรับ user
+- เพิ่มหน้า admin สำหรับ assign staff ตาม category
+- เพิ่มหน้า staff สำหรับอัปเดต status และ resolution note
+- เพิ่ม API สำหรับ evaluation หลังปิด ticket
+- แก้ข้อความไทยในบางไฟล์ที่ยังเป็น mojibake จาก encoding เดิม

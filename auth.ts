@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -64,6 +65,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = user.role;
         token.id = user.id;
       }
+
+      if (token.id && !token.role) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true },
+        });
+
+        if (dbUser) {
+          token.role = dbUser.role;
+        }
+      }
+
       return token;
     },
 
@@ -71,7 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.role = token.role as Role;
       }
       return session;
     },

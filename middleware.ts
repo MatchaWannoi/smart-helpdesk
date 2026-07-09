@@ -40,12 +40,12 @@ export default auth((req) => {
   }
 
   // ----- กรณี 3: เข้าหน้า admin แต่ role ไม่ใช่ ADMIN -----
-  if (isAdminPath && role !== "ADMIN") {
+  if (isAdminPath && role && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/chat", nextUrl));
   }
 
   // ----- กรณี 4: เข้าหน้า staff แต่ role ไม่ใช่ STAFF (ADMIN เข้าได้ด้วยก็ได้ ถ้าต้องการ) -----
-  if (isStaffPath && role !== "STAFF" && role !== "ADMIN") {
+  if (isStaffPath && role && role !== "STAFF" && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/chat", nextUrl));
   }
 
