@@ -1,6 +1,8 @@
 import { SenderType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { AI_SYSTEM_USER_ID } from "@/lib/constants";
+import { analyzeMessage } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -48,17 +50,64 @@ export async function POST(request: Request) {
     );
   }
 
-  const message = await prisma.message.create({
-    data: {
-      userId: session.user.id,
-      senderId: session.user.id,
-      senderType: SenderType.USER,
-      content: content.trim(),
+  const trimmedContent = content.trim();
+
+  // เรียก AI วิเคราะห์ก่อน เพื่อให้รู้ผล confident ก่อนตัดสินใจสร้าง ticket
+  const aiResult = await analyzeMessage(trimmedContent);
+
+  // Process 5: ถ้า AI ไม่มั่นใจ (confident === false) ต้องสร้าง Ticket แน่นอน
+  // แล้วผูกทั้งข้อความ user และข้อความตอบกลับของ AI รอบนี้เข้ากับ ticket ทันที
+  // (ห่อทั้งหมดไว้ใน transaction เดียวกันเพื่อความ atomic)
+  const { userMessage, aiMessage, ticketId } = await prisma.$transaction(
+    async (tx) => {
+      let ticketId: string | null = null;
+
+      if (!aiResult.confident) {
+        const ticket = await tx.ticket.create({
+          data: {
+            userId: session.user.id,
+            category: aiResult.category,
+            urgency: aiResult.urgency,
+            aiConfident: false,
+            // ใช้ข้อความแรกที่ผู้ใช้พิมพ์เป็น title เบื้องต้น (ตัดความยาวไว้กันยาวเกิน)
+            title: trimmedContent.slice(0, 80),
+          },
+        });
+        ticketId = ticket.id;
+      }
+
+      const userMessage = await tx.message.create({
+        data: {
+          userId: session.user.id,
+          senderId: session.user.id,
+          senderType: SenderType.USER,
+          content: trimmedContent,
+          ticketId,
+        },
+      });
+
+      const aiMessage = await tx.message.create({
+        data: {
+          userId: session.user.id,
+          senderId: AI_SYSTEM_USER_ID,
+          senderType: SenderType.AI,
+          content: aiResult.aiReplyMessage,
+          ticketId,
+          aiMeta: {
+            category: aiResult.category,
+            urgency: aiResult.urgency,
+            confident: aiResult.confident,
+            suggestedFaqId: aiResult.suggestedFaqId,
+          },
+        },
+      });
+
+      return { userMessage, aiMessage, ticketId };
     },
-  });
+  );
 
-  // Process 3-4 will create an AI reply here. The reply must keep this
-  // session user as userId and use AI_SYSTEM_USER_ID as senderId.
-
-  return NextResponse.json({ message }, { status: 201 });
+  return NextResponse.json(
+    { userMessage, aiMessage, aiResult, ticketId },
+    { status: 201 },
+  );
 }

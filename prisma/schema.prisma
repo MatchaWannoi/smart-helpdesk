@@ -59,8 +59,15 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  password  String
+  // nullable เพื่อเตรียมรองรับบัญชี SSO ที่ไม่ใช้รหัสผ่านภายในระบบ
+  password  String?
   role      Role     @default(USER)
+
+  // บัญชีแบบ credentials ที่ Admin สร้างจะต้องเปลี่ยนรหัสผ่านครั้งแรก
+  mustChangePassword Boolean @default(false)
+  isActive           Boolean @default(true)
+  authProvider       String  @default("credentials")
+  externalAccountId  String? @unique
 
   // เฉพาะ role = STAFF ใช้ระบุความเชี่ยวชาญ ช่วย Process 6 (มอบหมายงาน)
   specialty Category?
@@ -80,6 +87,7 @@ model User {
   evaluations Evaluation[]
 
   @@index([role])
+  @@index([isActive])
 }
 
 model Ticket {

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
-// Middleware ทำงาน "ก่อน" ทุก request ที่ตรงกับ matcher ด้านล่าง
+// Proxy ทำงาน "ก่อน" ทุก request ที่ตรงกับ matcher ด้านล่าง
 // เหมาะกับการเช็คสิทธิ์ตรงนี้ที่เดียว ดีกว่าไปเช็คซ้ำๆในทุกหน้า
 
 // ----- กำหนดว่าแต่ละ path เข้าได้ต้องมี role อะไร -----
@@ -9,14 +9,14 @@ import { NextResponse } from "next/server";
 const ADMIN_ONLY_PATHS = ["/admin"];
 const STAFF_ONLY_PATHS = ["/staff"];
 // path ที่แค่ login แล้วเข้าได้ (ไม่จำกัด role เฉพาะ)
-const AUTHENTICATED_PATHS = ["/chat", "/tickets"];
+const AUTHENTICATED_PATHS = ["/chat", "/tickets", "/change-password"];
 // path ที่ห้ามคนที่ login แล้วเข้า (กันไม่ให้กลับไปหน้า login/register ซ้ำ)
-const GUEST_ONLY_PATHS = ["/login", "/register"];
+const GUEST_ONLY_PATHS = ["/login"];
 
 export default auth((req) => {
   const { nextUrl } = req;
   const session = req.auth; // ข้อมูล session ปัจจุบัน (ถ้า login อยู่)
-  const isLoggedIn = !!session?.user;
+  const isLoggedIn = Boolean(session?.user?.id && session.user.isActive);
   const role = session?.user?.role;
   const path = nextUrl.pathname;
 
@@ -24,6 +24,25 @@ export default auth((req) => {
   const isStaffPath = STAFF_ONLY_PATHS.some((p) => path.startsWith(p));
   const isAuthPath = AUTHENTICATED_PATHS.some((p) => path.startsWith(p));
   const isGuestPath = GUEST_ONLY_PATHS.some((p) => path.startsWith(p));
+
+  // บัญชีที่ Admin เพิ่งสร้างต้องตั้งรหัสผ่านใหม่ก่อนใช้งานส่วนอื่น
+  if (
+    isLoggedIn &&
+    session?.user?.mustChangePassword &&
+    path !== "/change-password" &&
+    !path.startsWith("/api/account/password") &&
+    !path.startsWith("/api/auth")
+  ) {
+    return NextResponse.redirect(new URL("/change-password", nextUrl));
+  }
+
+  if (
+    isLoggedIn &&
+    !session?.user?.mustChangePassword &&
+    path === "/change-password"
+  ) {
+    return NextResponse.redirect(new URL("/chat", nextUrl));
+  }
 
   // ----- กรณี 1: หน้า login/register แต่ login อยู่แล้ว -----
   // เช่น login แล้วยังพยายามเข้า /login ซ้ำ → เด้งไป /chat แทน
@@ -40,12 +59,12 @@ export default auth((req) => {
   }
 
   // ----- กรณี 3: เข้าหน้า admin แต่ role ไม่ใช่ ADMIN -----
-  if (isAdminPath && role !== "ADMIN") {
+  if (isAdminPath && role && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/chat", nextUrl));
   }
 
   // ----- กรณี 4: เข้าหน้า staff แต่ role ไม่ใช่ STAFF (ADMIN เข้าได้ด้วยก็ได้ ถ้าต้องการ) -----
-  if (isStaffPath && role !== "STAFF" && role !== "ADMIN") {
+  if (isStaffPath && role && role !== "STAFF" && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/chat", nextUrl));
   }
 
@@ -53,7 +72,7 @@ export default auth((req) => {
   return NextResponse.next();
 });
 
-// matcher บอกว่า middleware นี้ควรทำงานกับ path ไหนบ้าง
+// matcher บอกว่า Proxy นี้ควรทำงานกับ path ไหนบ้าง
 // ยกเว้น static file, _next (Next.js internal), api/auth (ต้องให้ Auth.js เรียกได้อิสระ)
 export const config = {
   matcher: [

@@ -35,7 +35,7 @@ export default function LoginPage() {
       return;
     }
 
-    // login สำเร็จ → ไปหน้าแชท (ตามแผน Process 2)
+    // Proxy จะบังคับผู้ใช้ที่ได้รหัสผ่านชั่วคราวไปเปลี่ยนรหัสผ่านก่อน
     router.push("/chat");
     router.refresh(); // บังคับให้ server component รู้ว่า session เปลี่ยนแล้ว
   }
@@ -86,8 +86,8 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p style={{ marginTop: 16, fontSize: 14 }}>
-        มีบัญชีอยู่แล้ว? <a href="/register">สมัครสมาชิก</a>
+      <p style={{ marginTop: 16, fontSize: 14, color: "#71717a" }}>
+        ยังไม่มีบัญชี? กรุณาติดต่อผู้ดูแลระบบขององค์กร
       </p>
     </div>
   );
