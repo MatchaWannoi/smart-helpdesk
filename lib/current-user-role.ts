@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 export async function getCurrentUserRole(userId: string): Promise<Role | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true },
+    select: { role: true, isActive: true },
   });
 
-  return user?.role ?? null;
+  return user?.isActive ? user.role : null;
 }

@@ -34,12 +34,20 @@ export async function Navbar() {
                 Ticket ของฉัน
               </Link>
               {role === "ADMIN" && (
-                <Link
-                  href="/admin/tickets"
-                  className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                >
-                  มอบหมายเจ้าหน้าที่
-                </Link>
+                <>
+                  <Link
+                    href="/admin/tickets"
+                    className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  >
+                    มอบหมายเจ้าหน้าที่
+                  </Link>
+                  <Link
+                    href="/admin/users"
+                    className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  >
+                    จัดการบัญชี
+                  </Link>
+                </>
               )}
               {role === "STAFF" && (
                 <Link
@@ -64,20 +72,12 @@ export async function Navbar() {
               </form>
             </>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                เข้าสู่ระบบ
-              </Link>
-              <Link
-                href="/register"
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                สมัครสมาชิก
-              </Link>
-            </>
+            <Link
+              href="/login"
+              className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              เข้าสู่ระบบ
+            </Link>
           )}
         </nav>
       </div>

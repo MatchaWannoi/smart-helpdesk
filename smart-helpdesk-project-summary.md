@@ -1,183 +1,218 @@
-# Smart Helpdesk with AI - สรุปโปรเจกต์ปัจจุบัน
+# Smart Helpdesk with AI — Project Summary
 
-## 1. ภาพรวมโปรเจกต์
+อัปเดตล่าสุด: 14 กรกฎาคม 2026
 
-**ชื่อระบบ:** Smart Helpdesk with AI  
-**ประเภทงาน:** Mini Project  
-**รูปแบบระบบ:** Web application แบบ full-stack ในโปรเจกต์เดียว  
-**ภาษาหลัก:** TypeScript  
-**Framework หลัก:** Next.js 16 App Router
+## 1. ภาพรวม
 
-ระบบนี้เป็น Helpdesk สำหรับให้ผู้ใช้สมัครสมาชิก เข้าสู่ระบบ และแจ้งปัญหาผ่านหน้าแชท จากนั้นระบบจะบันทึกข้อความ เรียก Gemini เพื่อวิเคราะห์หมวดหมู่ ความเร่งด่วน และ FAQ ที่เกี่ยวข้อง แล้วตอบกลับผู้ใช้ผ่านข้อความ AI ในแชทเดียวกัน
+Smart Helpdesk เป็นเว็บแอป full-stack สำหรับงาน IT Support ภายในบริษัทหรือสถานศึกษา ผู้ใช้แจ้งปัญหาผ่านแชท จากนั้น Gemini จะวิเคราะห์หมวดหมู่ ความเร่งด่วน และ FAQ ที่เกี่ยวข้อง หาก AI ไม่มั่นใจหรือผู้ใช้ยืนยันว่าคำตอบยังแก้ปัญหาไม่ได้ ระบบจะสร้าง Ticket เพื่อส่งต่อเจ้าหน้าที่
 
-สถานะปัจจุบันของโค้ด:
+ระบบใช้รูปแบบ **Admin-managed accounts**: ไม่มีการสมัครสมาชิกสาธารณะ Admin เป็นผู้สร้างบัญชี USER/STAFF และระบบออกรหัสผ่านชั่วคราวให้ ผู้ใช้ต้องเปลี่ยนรหัสผ่านก่อนเข้าใช้งานส่วนอื่น
 
-- มีระบบสมัครสมาชิกและเข้าสู่ระบบด้วย Auth.js/NextAuth v5
-- มีหน้าแชทสำหรับผู้ใช้
-- มี API สำหรับดึงและส่งข้อความ
-- มี `lib/gemini.ts` สำหรับ Process 3-4: วิเคราะห์ข้อความและแนะนำ FAQ ด้วย Gemini
-- มี Prisma schema สำหรับ User, Ticket, Message, FAQ และ Evaluation
-- ยังไม่มีหน้าจอ/route สำหรับจัดการ Ticket, Admin, Staff และ Evaluation แบบครบ flow
+## 2. Technology Stack
 
----
-
-## 2. Process หลักของระบบ
-
-| # | Process | สถานะในโค้ดปัจจุบัน | รายละเอียด |
-|---|---|---|---|
-| 1 | สมัครสมาชิก / เข้าสู่ระบบ | ทำแล้วบางส่วน | สมัครสมาชิกผ่าน `app/api/register/route.ts`, login ผ่าน Auth.js credentials provider |
-| 2 | แจ้งปัญหาผ่านแชท | ทำแล้ว | หน้า `app/chat/page.tsx`, hook `hooks/useChatMessages.ts`, API `app/api/messages/route.ts` |
-| 3 | AI วิเคราะห์ข้อความและจัดหมวดหมู่ | ทำแล้ว | `lib/gemini.ts` เรียก Gemini และคืน `category`, `urgency`, `confident` |
-| 4 | AI แนะนำ FAQ หรือข้อความตอบกลับ | ทำแล้ว | pre-filter FAQ จาก keyword ก่อนส่งเข้า Gemini แล้วบันทึกผลใน `Message.aiMeta` |
-| 5 | สร้าง Ticket เมื่อ AI ไม่มั่นใจ | ยังไม่ทำ | Prisma schema รองรับแล้ว แต่ยังไม่มี API/logic สร้าง ticket จากแชท |
-| 6 | Admin มอบหมายเจ้าหน้าที่ | ยังไม่ทำ | Prisma schema มี `assignedStaffId` และ `specialty` แล้ว แต่ยังไม่มีหน้าจอ |
-| 7 | Staff ดำเนินการและอัปเดตสถานะ | ยังไม่ทำ | Prisma schema มี `TicketStatus` และ `resolutionNote` แล้ว |
-| 8 | ผู้ใช้ประเมินผลบริการ | ยังไม่ทำ | Prisma schema มี `Evaluation` แล้ว แต่ยังไม่มี UI/API |
-
----
-
-## 3. Tech Stack ที่ใช้จริง
-
-| ส่วน | เทคโนโลยี | หมายเหตุ |
-|---|---|---|
-| Language | TypeScript | ใช้กับ frontend, route handlers, Prisma seed |
-| Framework | Next.js 16.2.10 App Router | ใช้ `app/` directory และ Route Handlers |
-| UI | React 19.2.4 + Tailwind CSS 4 | ยังไม่ได้ใช้ shadcn/ui ในโครงสร้างปัจจุบัน |
-| Authentication | NextAuth/Auth.js v5 beta | ใช้ `auth()` จากไฟล์ `auth.ts` |
-| Database | PostgreSQL | ตั้งค่าผ่าน `DATABASE_URL` และ `DIRECT_URL` |
-| ORM | Prisma 6.19.3 | schema อยู่ที่ `prisma/schema.prisma` |
-| AI | Google Gemini API | ใช้ package `@google/generative-ai` และ model `gemini-2.5-flash` |
-| Password Hashing | bcryptjs | ใช้ใน register, credentials login และ seed |
-| Dev tooling | ESLint, TypeScript | ตรวจด้วย `npm.cmd run lint` และ `npx.cmd tsc --noEmit` |
-
-หมายเหตุ: path alias `@/*` ชี้ไปที่ root ของโปรเจกต์ ไม่ใช่ `src/` ตาม `tsconfig.json`
-
----
-
-## 4. โครงสร้างโฟลเดอร์ปัจจุบัน
-
-```text
-smart-helpdesk/
-├── app/
-│   ├── api/
-│   │   ├── auth/
-│   │   │   └── [...nextauth]/
-│   │   │       └── route.ts
-│   │   ├── messages/
-│   │   │   └── route.ts
-│   │   └── register/
-│   │       └── route.ts
-│   ├── chat/
-│   │   └── page.tsx
-│   ├── login/
-│   │   └── page.tsx
-│   ├── register/
-│   │   └── page.tsx
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   └── chat/
-│       ├── ChatBubble.tsx
-│       └── ChatInput.tsx
-├── hooks/
-│   └── useChatMessages.ts
-├── lib/
-│   ├── constants.ts
-│   ├── gemini.ts
-│   └── prisma.ts
-├── prisma/
-│   ├── schema.prisma
-│   └── seed.ts
-├── auth.ts
-├── middleware.ts
-├── next-auth.d.ts
-├── next.config.ts
-├── package.json
-└── tsconfig.json
-```
-
-จุดสำคัญ:
-
-- โปรเจกต์นี้ไม่ได้ใช้ `src/`
-- API อยู่ใน `app/api/**/route.ts`
-- helper กลางอยู่ใน `lib/`
-- Auth.js config อยู่ที่ root: `auth.ts`
-- Gemini logic อยู่ที่ `lib/gemini.ts`
-
----
-
-## 5. ไฟล์สำคัญ
-
-| ไฟล์ | หน้าที่ |
+| ส่วน | เทคโนโลยี |
 |---|---|
-| `auth.ts` | ตั้งค่า Auth.js/NextAuth v5 ด้วย credentials provider และ session callback |
-| `app/api/auth/[...nextauth]/route.ts` | export Auth.js route handlers |
-| `app/api/register/route.ts` | สมัครสมาชิกและ hash password |
-| `app/api/messages/route.ts` | GET ข้อความในแชท และ POST ข้อความใหม่พร้อมข้อความตอบกลับจาก AI |
-| `lib/gemini.ts` | pre-filter FAQ, สร้าง prompt, เรียก Gemini, parse JSON และ fallback เมื่อ AI ล้มเหลว |
-| `lib/prisma.ts` | PrismaClient singleton สำหรับ dev hot reload |
-| `lib/constants.ts` | เก็บ `AI_SYSTEM_USER_ID` |
-| `hooks/useChatMessages.ts` | polling ข้อความทุก 4 วินาที และส่งข้อความจากหน้าแชท |
-| `components/chat/ChatBubble.tsx` | แสดงข้อความ USER/AI/STAFF |
-| `components/chat/ChatInput.tsx` | ช่องพิมพ์และปุ่มส่งข้อความ |
-| `prisma/schema.prisma` | data model และ enum ของระบบ |
-| `prisma/seed.ts` | seed user, AI system user, FAQ, ticket และ message ตัวอย่าง |
+| Framework | Next.js 16.2.10 App Router |
+| UI | React 19.2.4, Tailwind CSS 4 |
+| Language | TypeScript |
+| Authentication | Auth.js/NextAuth v5 Credentials + JWT session |
+| Database | PostgreSQL (Supabase) |
+| ORM | Prisma 6.19.3 |
+| AI | Google Gemini `gemini-2.5-flash` |
+| Password hashing | bcryptjs |
 
----
+โปรเจกต์ใช้ `proxy.ts` ตาม convention ของ Next.js 16 และใช้ path alias `@/*` ชี้ไปที่ root
 
-## 6. Data Model หลัก
+## 3. บทบาทผู้ใช้
 
-Prisma schema ปัจจุบันมี model หลักดังนี้:
+| Role | หน้าที่ |
+|---|---|
+| USER | แจ้งปัญหา สนทนากับ AI ติดตาม Ticket และตอบเจ้าหน้าที่ |
+| STAFF | ดู Ticket ที่ได้รับมอบหมาย ตอบผู้ใช้ อัปเดตสถานะ และบันทึกวิธีแก้ |
+| ADMIN | ดู Ticket ทั้งหมด มอบหมาย Staff และจัดการบัญชี USER/STAFF |
 
-- `User`: ผู้ใช้ระบบ มี role `USER`, `STAFF`, `ADMIN`
-- `Ticket`: คำร้อง/เคส รองรับ category, urgency, status, assigned staff และ resolution note
-- `Message`: ข้อความในแชทหรือ ticket thread มี `senderType` และ `aiMeta`
-- `FAQ`: คำถาม-คำตอบพร้อม category และ keywords สำหรับ pre-filter ก่อนส่งเข้า AI
-- `Evaluation`: คะแนนและความคิดเห็นหลังปิด ticket
+บัญชี `ai-system-bot` เป็นบัญชีระบบภายใน ไม่แสดงในหน้าจัดการบัญชีและห้ามแก้ไขผ่าน API
 
-Enum หลัก:
+## 4. Account Provisioning และ Authentication
 
-- `Role`: `USER`, `STAFF`, `ADMIN`
-- `Category`: `NETWORK`, `HARDWARE`, `SOFTWARE`, `ACCOUNT`
-- `Urgency`: `LOW`, `MEDIUM`, `HIGH`
-- `TicketStatus`: `OPEN`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`
-- `SenderType`: `USER`, `AI`, `STAFF`
+### การสร้างบัญชี
 
----
+1. สร้าง Admin เริ่มต้นผ่าน `prisma/seed.ts`
+2. Admin เข้า `/admin/users`
+3. Admin ระบุชื่อ อีเมลองค์กร และ role USER หรือ STAFF
+4. ถ้าเป็น STAFF ต้องเลือก specialty
+5. ระบบสร้างรหัสผ่านชั่วคราวแบบสุ่มและแสดงเพียงครั้งเดียว
+6. รหัสผ่านถูกเก็บแบบ bcrypt hash เท่านั้น
+7. เมื่อผู้ใช้ login ครั้งแรก Proxy จะส่งไป `/change-password`
+8. ผู้ใช้ต้องตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัว และมีทั้งตัวอักษรกับตัวเลข
+9. หลังเปลี่ยนสำเร็จ ระบบ sign out เพื่อให้ login ใหม่ด้วยรหัสผ่านส่วนตัว
 
-## 7. Flow ที่ทำงานแล้ว
+### การจัดการบัญชี
 
-### Register
+- ปิด public registration: `/register` redirect ไปหน้า login และ `POST /api/register` ตอบ 403
+- Admin รีเซ็ตรหัสผ่านของ USER/STAFF ได้ โดยระบบออกรหัสชั่วคราวใหม่
+- Admin เปิดหรือระงับบัญชีได้
+- Admin ระงับบัญชีตัวเองไม่ได้
+- บัญชีที่ถูกระงับ login ไม่ได้ และ JWT เดิมจะถูกทำให้ใช้ protected page/API ไม่ได้
+- Staff ที่ถูกระงับจะไม่ปรากฏในรายการมอบหมาย Ticket
 
-1. ผู้ใช้กรอก name, email, password
-2. API ตรวจข้อมูลและเช็ก email ซ้ำ
-3. hash password ด้วย bcryptjs
-4. สร้าง user role เริ่มต้นเป็น `USER`
+### การเตรียมรองรับ SSO
 
-### Login
+`User.password` เป็น nullable และมี `authProvider` กับ `externalAccountId` เพื่อเตรียมเชื่อม Microsoft/Google SSO ภายหลัง การเชื่อมบัญชีควรจับคู่จากอีเมลองค์กรที่ provider ยืนยันแล้ว เพื่อรักษา User ID, Ticket และประวัติเดิม
 
-1. Auth.js credentials provider รับ email/password
-2. ค้นหา user จาก Prisma
-3. เทียบ password ด้วย bcryptjs
-4. ใส่ `id` และ `role` ลง session
+## 5. Process หลักของระบบ
 
-### Chat + AI
+| # | Process | สถานะในโค้ด | รายละเอียด |
+|---|---|---|---|
+| 1.0 | ตรวจสอบสิทธิ์และเข้าสู่ระบบ | ทำแล้ว | ตรวจสอบบัญชี สถานะบัญชี Role และบังคับเปลี่ยนรหัสผ่านครั้งแรก |
+| 2.0 | รับแจ้งและวิเคราะห์ปัญหาด้วย AI | ทำแล้ว | รับข้อความ ค้น FAQ ส่งให้ Gemini วิเคราะห์ และตอบคำแนะนำแก่ผู้ใช้ |
+| 3.0 | สร้างและติดตาม Ticket | ทำแล้ว | สร้าง Ticket อัตโนมัติหรือจากการส่งต่อ และให้ผู้ใช้ติดตามรายละเอียดกับสถานะ |
+| 4.0 | มอบหมาย Ticket | ทำแล้ว | Admin เลือก Staff ที่ active โดยพิจารณาหมวดปัญหาและความเชี่ยวชาญ |
+| 5.0 | ดำเนินการแก้ไข Ticket | ทำแล้ว | Staff ดูงาน สนทนากับผู้ใช้ อัปเดตสถานะ และบันทึกวิธีแก้ไข |
+| 6.0 | จัดการผู้ใช้และเจ้าหน้าที่ | ทำแล้ว | Admin สร้าง รีเซ็ตรหัสผ่าน เปิด–ปิดบัญชี กำหนด Role และความเชี่ยวชาญ |
+| 7.0 | จัดการ FAQ | ยังไม่ครบ | Data model และการนำ FAQ ไปใช้มีแล้ว แต่ยังไม่มีหน้าและ API สำหรับ Admin จัดการ FAQ |
+| 8.0 | ประเมินผลและออกรายงาน | ทำแล้วบางส่วน | มี Evaluation model และข้อมูล seed แต่ยังไม่มี UI/API ประเมินและรายงาน |
 
-1. หน้า chat เรียก `GET /api/messages` เพื่อโหลดข้อความ
-2. hook ทำ polling ทุก 4 วินาที
-3. เมื่อผู้ใช้ส่งข้อความ จะเรียก `POST /api/messages`
-4. API บันทึกข้อความ user
-5. API เรียก `analyzeMessage()` ใน `lib/gemini.ts`
-6. Gemini ตอบ JSON: category, urgency, confident, suggestedFaqId, aiReplyMessage
-7. API บันทึกข้อความ AI และเก็บ metadata ใน `aiMeta`
-8. frontend โหลดข้อความใหม่และแสดงในแชท
+### Process 1.0: ตรวจสอบสิทธิ์และเข้าสู่ระบบ
 
----
+1. USER, STAFF หรือ ADMIN กรอกอีเมลและรหัสผ่านที่ `/login`
+2. ระบบอ่านข้อมูลบัญชีจาก D1 เพื่อตรวจรหัสผ่าน สถานะบัญชี และ Role
+3. ระบบสร้าง session และส่งสิทธิ์การใช้งานกลับไปยังผู้ใช้
+4. ถ้า `mustChangePassword = true` ระบบส่งไป `/change-password`
+5. ระบบบันทึกรหัสผ่านใหม่ลง D1 แล้วให้เข้าสู่ระบบอีกครั้ง
 
-## 8. Environment Variables
+### Process 2.0: รับแจ้งและวิเคราะห์ปัญหาด้วย AI
 
-ควรมีค่าเหล่านี้ใน `.env`:
+1. USER ส่งข้อความแจ้งปัญหาที่ `/chat`
+2. ระบบบันทึกข้อความผู้ใช้ลง D3
+3. ระบบอ่าน FAQ ที่เกี่ยวข้องจาก D2 โดย pre-filter ด้วย keywords
+4. ระบบส่งข้อความและ FAQ ที่คัดกรองแล้วให้ Gemini
+5. Gemini คืน category, urgency, confident, suggestedFaqId และ aiReplyMessage
+6. ระบบบันทึกคำตอบและผลวิเคราะห์ลง D3 แล้วแสดงคำตอบแก่ USER
+7. ถ้า AI ไม่มั่นใจ ระบบส่งข้อมูลปัญหาไปยัง Process 3.0
+
+### Process 3.0: สร้างและติดตาม Ticket
+
+1. ระบบสร้าง Ticket สถานะ `OPEN` เมื่อ AI ไม่มั่นใจ หรือเมื่อ USER ระบุว่าคำแนะนำแก้ปัญหาไม่ได้
+2. ระบบบันทึก category, urgency และข้อมูลเจ้าของ Ticket ลง D4
+3. ระบบผูกข้อความ USER และ AI ใน D3 เข้ากับ Ticket
+4. USER ขอเรียกดูรายการ รายละเอียด ประวัติข้อความ และสถานะ Ticket ได้
+
+### Process 4.0: มอบหมาย Ticket
+
+1. ADMIN เรียกดู Ticket ที่รอมอบหมายจาก D4
+2. ระบบอ่านรายชื่อ STAFF ที่ active และความเชี่ยวชาญจาก D1
+3. ADMIN เลือก STAFF ให้รับผิดชอบ Ticket
+4. ระบบบันทึก `assignedStaffId` และเปลี่ยนสถานะเป็น `ASSIGNED` ใน D4
+5. Ticket ที่ `RESOLVED` หรือ `CLOSED` ไม่สามารถมอบหมายใหม่ได้
+
+### Process 5.0: ดำเนินการแก้ไข Ticket
+
+1. STAFF เรียกดู Ticket ที่ได้รับมอบหมายจาก D4
+2. ระบบอ่านรายละเอียดผู้แจ้งจาก D1 และประวัติสนทนาจาก D3
+3. STAFF และ USER ส่งข้อความโต้ตอบกัน โดยระบบบันทึกข้อความลง D3
+4. STAFF เปลี่ยนสถานะเป็น `IN_PROGRESS` หรือ `RESOLVED`
+5. STAFF บันทึก `resolutionNote` และระบบอัปเดตข้อมูลใน D4
+6. USER ติดตามสถานะและข้อความตอบกลับได้ที่ `/tickets/[id]`
+
+### Process 6.0: จัดการผู้ใช้และเจ้าหน้าที่
+
+1. สร้างบัญชี Admin เริ่มต้นผ่าน `prisma/seed.ts`
+2. ADMIN สร้างบัญชี USER หรือ STAFF ที่ `/admin/users`
+3. ถ้าเป็น STAFF ต้องระบุความเชี่ยวชาญ
+4. ระบบสร้างรหัสผ่านชั่วคราวและบันทึกบัญชีลง D1
+5. ADMIN สามารถรีเซ็ตรหัสผ่าน เปิดใช้งาน หรือระงับบัญชีได้
+6. บัญชีระบบ AI ถูกซ่อนและไม่อนุญาตให้แก้ไขผ่าน API
+
+### Process 7.0: จัดการ FAQ
+
+1. ADMIN เรียกดูรายการ FAQ จาก D2
+2. ADMIN เพิ่ม แก้ไข หรือลบคำถาม คำตอบ หมวดหมู่ และ keywords
+3. ระบบตรวจสอบข้อมูลและบันทึกการเปลี่ยนแปลงลง D2
+4. ระบบส่งผลการจัดการ FAQ กลับให้ ADMIN
+5. Process 2.0 อ่าน FAQ จาก D2 เพื่อนำไปวิเคราะห์ปัญหา แต่ AI ไม่เข้าถึง D2 โดยตรง
+
+Process นี้เป็นขอบเขตของระบบที่กำหนดไว้ใน DFD แต่หน้าและ API สำหรับ ADMIN ยังต้องพัฒนาเพิ่ม
+
+### Process 8.0: ประเมินผลและออกรายงาน
+
+1. STAFF เปลี่ยน Ticket เป็น `RESOLVED`
+2. USER ตรวจสอบวิธีแก้และยืนยันผล
+3. หากยังแก้ไม่สำเร็จ ระบบส่ง Ticket กลับเป็น `IN_PROGRESS`
+4. หากสำเร็จ USER ให้คะแนน 1–5 และความคิดเห็น
+5. ระบบบันทึกผลลง D5 และเปลี่ยน Ticket ใน D4 เป็น `CLOSED`
+6. ADMIN ระบุเงื่อนไขหรือช่วงเวลาของรายงาน
+7. ระบบอ่านข้อมูลจาก D1, D4 และ D5 เพื่อสรุปจำนวน Ticket ประสิทธิภาพเจ้าหน้าที่ และความพึงพอใจ
+
+ส่วนการประเมินและรายงานเป็นขอบเขตของระบบที่กำหนดไว้ใน DFD แต่ UI/API ยังต้องพัฒนาเพิ่ม
+
+### Data Store สำหรับ DFD Level 1
+
+| รหัส | Data Store | ตารางหลัก | ข้อมูลสำคัญ |
+|---|---|---|---|
+| D1 | ข้อมูลผู้ใช้และเจ้าหน้าที่ | `User` | บัญชี รหัสผ่าน Role สถานะบัญชี และความเชี่ยวชาญ |
+| D2 | ข้อมูล FAQ | `FAQ` | คำถาม คำตอบ หมวดหมู่ และ keywords |
+| D3 | ข้อมูลข้อความสนทนา | `Message` | ข้อความ USER/AI/STAFF, Ticket ที่เกี่ยวข้อง และผลวิเคราะห์ AI |
+| D4 | ข้อมูล Ticket | `Ticket` | ผู้แจ้ง ผู้รับผิดชอบ หมวดปัญหา ความเร่งด่วน สถานะ และวิธีแก้ไข |
+| D5 | ข้อมูลแบบประเมิน | `Evaluation` | Ticket ผู้ประเมิน คะแนน และความคิดเห็น |
+
+External Entity ใน DFD ได้แก่ ผู้ใช้ทั่วไป เจ้าหน้าที่ ผู้ดูแลระบบ และ AI โดย External Entity ทุกตัวต้องรับส่งข้อมูลผ่าน Process และห้ามเชื่อมต่อกับ Data Store โดยตรง
+
+## 6. Ticket Status และ Classification
+
+สถานะ Ticket: `OPEN → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED`
+
+หมวดปัญหา: `NETWORK`, `HARDWARE`, `SOFTWARE`, `ACCOUNT`
+
+ระดับความเร่งด่วน: `LOW`, `MEDIUM`, `HIGH`
+
+## 7. Data Model
+
+- `User`: identity, role, specialty, credential/SSO metadata และสถานะบัญชี
+- `Ticket`: เจ้าของ ผู้รับผิดชอบ category, urgency, status และ resolution note
+- `Message`: ข้อความ USER/AI/STAFF และ AI metadata
+- `FAQ`: คำถาม คำตอบ category และ keywords
+- `Evaluation`: คะแนน 1–5 และความคิดเห็นแบบ one-to-one ต่อ Ticket
+
+ฟิลด์บัญชีสำคัญใน `User`:
+
+- `password String?`
+- `mustChangePassword Boolean`
+- `isActive Boolean`
+- `authProvider String`
+- `externalAccountId String? @unique`
+
+## 8. Routes สำคัญ
+
+### Pages
+
+| Route | การใช้งาน |
+|---|---|
+| `/login` | เข้าสู่ระบบด้วยบัญชีที่ Admin สร้าง |
+| `/change-password` | เปลี่ยนรหัสผ่านชั่วคราว |
+| `/chat` | แจ้งปัญหาและสนทนากับ AI |
+| `/tickets`, `/tickets/[id]` | Ticket ของ USER |
+| `/staff/tickets`, `/staff/tickets/[id]` | งานที่ STAFF รับผิดชอบ |
+| `/admin/tickets` | มอบหมาย Ticket |
+| `/admin/users` | สร้าง รีเซ็ต และระงับบัญชี |
+
+### APIs
+
+| Route | Method | การใช้งาน |
+|---|---|---|
+| `/api/admin/users` | GET, POST | อ่านรายการและสร้าง USER/STAFF |
+| `/api/admin/users/[id]` | PATCH | reset password หรือเปิด/ระงับบัญชี |
+| `/api/account/password` | POST | เปลี่ยนรหัสผ่านของตนเอง |
+| `/api/register` | POST | ปิดใช้งานและตอบ 403 |
+| `/api/messages` | GET, POST | แชทและ AI analysis |
+| `/api/messages/[id]/escalate` | POST | ส่งคำตอบ AI ต่อเป็น Ticket |
+| `/api/messages/[id]/resolve` | POST | บันทึกว่า AI แก้ปัญหาได้ |
+| `/api/admin/tickets/[id]/assign` | POST | มอบหมาย Staff |
+| `/api/staff/tickets/[id]` | GET, PATCH | อ่านและอัปเดต Ticket |
+
+ทุก API ที่จัดการบัญชีตรวจ authentication และ authorization ฝั่ง server ไม่อาศัยเพียงการซ่อน UI
+
+## 9. Environment Variables
 
 ```env
 DATABASE_URL="postgresql://..."
@@ -186,29 +221,37 @@ AUTH_SECRET="..."
 GEMINI_API_KEY="..."
 ```
 
-หมายเหตุ: หากไม่มี `GEMINI_API_KEY` ระบบจะ fallback เป็นคำตอบส่งต่อเจ้าหน้าที่ และไม่ทำให้ request ค้าง
+## 10. คำสั่งพัฒนา
 
----
-
-## 9. คำสั่งที่ใช้บ่อย
-
-```bash
+```powershell
 npm.cmd run dev
 npm.cmd run lint
 npx.cmd tsc --noEmit
 npx.cmd prisma generate
+npx.cmd prisma db push
 npx.cmd prisma db seed
+npm.cmd run build
 ```
 
-บน Windows PowerShell อาจต้องใช้ `npm.cmd` และ `npx.cmd` แทน `npm`/`npx` หาก execution policy บล็อกไฟล์ `.ps1`
+การแก้ schema รอบ Admin-managed accounts ถูก sync กับฐานข้อมูล Supabase แล้วเมื่อ 14 กรกฎาคม 2026
 
----
+## 11. สถานะและงานถัดไป
 
-## 10. งานถัดไปที่ควรทำ
+สิ่งที่ทำแล้ว:
 
-- สร้าง logic Process 5: ถ้า `aiResult.confident === false` ให้สร้าง Ticket อัตโนมัติ
-- เพิ่มหน้า list/detail ticket สำหรับ user
-- เพิ่มหน้า admin สำหรับ assign staff ตาม category
-- เพิ่มหน้า staff สำหรับอัปเดต status และ resolution note
-- เพิ่ม API สำหรับ evaluation หลังปิด ticket
-- แก้ข้อความไทยในบางไฟล์ที่ยังเป็น mojibake จาก encoding เดิม
+- Credentials login และ role-based access
+- Admin-managed USER/STAFF accounts
+- Temporary password, forced password change, reset และ account suspension
+- AI FAQ response และ automatic/manual escalation
+- User/Admin/Staff Ticket pages และ message thread
+- Prisma schema sync, lint, type-check และ production build
+
+สิ่งที่ควรทำต่อก่อน Production:
+
+- เพิ่ม Evaluation UI/API และให้ USER เป็นผู้ยืนยัน `RESOLVED → CLOSED`
+- เพิ่ม automated tests สำหรับ authorization และ account lifecycle
+- เพิ่ม rate limiting และ audit log สำหรับ login/reset/disable
+- เพิ่ม SLA, notification และ dashboard
+- เพิ่มหน้าจัดการ FAQ
+- เพิ่ม Prisma migration history แทนการพึ่ง `db push`
+- เชื่อม Microsoft Entra ID หรือ Google Workspace SSO เมื่อองค์กรพร้อม

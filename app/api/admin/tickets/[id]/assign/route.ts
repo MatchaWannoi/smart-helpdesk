@@ -62,7 +62,7 @@ export async function POST(
     );
   }
 
-  if (!staff || staff.role !== Role.STAFF) {
+  if (!staff || staff.role !== Role.STAFF || !staff.isActive) {
     return NextResponse.json({ error: "Staff not found" }, { status: 400 });
   }
 

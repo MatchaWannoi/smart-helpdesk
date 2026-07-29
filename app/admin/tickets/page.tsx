@@ -75,7 +75,7 @@ export default async function AdminTicketsPage() {
       },
     }),
     prisma.user.findMany({
-      where: { role: Role.STAFF },
+      where: { role: Role.STAFF, isActive: true },
       select: { id: true, name: true, specialty: true },
       orderBy: { name: "asc" },
     }),

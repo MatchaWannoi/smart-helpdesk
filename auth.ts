@@ -36,6 +36,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null; // ไม่เจอ email นี้ในระบบ
         }
 
+        if (!user.isActive || !user.password) {
+          return null;
+        }
+
         // 2. เทียบ password ที่กรอกมา กับ password ที่ hash เก็บไว้
         const isPasswordValid = await bcrypt.compare(
           credentials.password as string,
@@ -52,6 +56,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name,
           email: user.email,
           role: user.role,
+          mustChangePassword: user.mustChangePassword,
+          isActive: user.isActive,
         };
       },
     }),
@@ -64,16 +70,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.mustChangePassword = user.mustChangePassword;
+        token.isActive = user.isActive;
       }
 
-      if (token.id && !token.role) {
+      // Refresh access flags from the database so disabling an account or
+      // forcing a password change takes effect for an existing JWT session.
+      if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true },
+          select: {
+            role: true,
+            isActive: true,
+            mustChangePassword: true,
+          },
         });
 
-        if (dbUser) {
+        if (dbUser?.isActive) {
           token.role = dbUser.role;
+          token.isActive = true;
+          token.mustChangePassword = dbUser.mustChangePassword;
+        } else {
+          // Empty id makes protected pages and APIs treat this session as invalid.
+          token.id = "";
+          token.isActive = false;
         }
       }
 
@@ -85,6 +105,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        session.user.isActive = Boolean(token.isActive);
       }
       return session;
     },
