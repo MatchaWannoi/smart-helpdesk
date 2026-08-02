@@ -58,14 +58,14 @@ export function ChatBubble({
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className="max-w-[75%]">
+      <div className="max-w-[75%] chat-bubble-wrap">
         {isAi && (
           <span className="mb-1 ml-1 block text-xs text-zinc-500">
             AI Assistant
           </span>
         )}
         <div
-          className={`rounded-2xl px-4 py-2 text-sm ${
+          className={`rounded-2xl px-4 py-2 text-sm chat-bubble ${
             isUser
               ? "rounded-br-sm bg-blue-600 text-white"
               : isAi

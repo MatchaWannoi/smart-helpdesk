@@ -40,17 +40,22 @@ export default function ChatPage() {
     await resolveMessage(message.id);
   };
 
+  const suggestions = [
+    { icon: "⌁", label: "เครือข่าย", text: "อินเทอร์เน็ตใช้งานไม่ได้ ต้องตรวจสอบอย่างไร" },
+    { icon: "⌕", label: "บัญชีผู้ใช้", text: "ลืมรหัสผ่านและไม่สามารถเข้าสู่ระบบได้" },
+    { icon: "▣", label: "ฮาร์ดแวร์", text: "คอมพิวเตอร์เปิดไม่ติด ต้องแก้ไขอย่างไร" },
+  ];
+
   return (
-    <main className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
-      <header className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <h1 className="text-lg font-semibold">แจ้งปัญหา</h1>
-        <p className="text-sm text-zinc-500">
-          ข้อความจะอัปเดตทุก 4 วินาที
-        </p>
+    <main className="chat-workspace">
+      <header className="chat-heading">
+        <div><span className="chat-kicker">✦ AI ASSISTANT</span><h1>แชทกับ AI ผู้ช่วย</h1>
+        <p>อธิบายปัญหาที่พบ แล้วเราจะช่วยหาทางแก้ไข</p></div>
+        <span className="online-pill"><i/>AI พร้อมให้บริการ</span>
       </header>
 
       {ticketBanner && (
-        <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+        <div className="ticket-banner">
           <span>
             ระบบสร้าง ticket และส่งต่อให้เจ้าหน้าที่แล้ว
           </span>
@@ -63,30 +68,39 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-        {loading && <p className="text-sm text-zinc-500">กำลังโหลด...</p>}
-        {!loading && messages.length === 0 && (
-          <p className="text-center text-sm text-zinc-500">
-            ยังไม่มีข้อความ เริ่มพิมพ์ปัญหาที่พบได้เลย
-          </p>
-        )}
-        {messages.map((message) => (
-          <ChatBubble
-            key={message.id}
-            message={message}
-            onEscalate={handleEscalate}
-            onResolve={handleResolve}
-          />
-        ))}
-        <div ref={bottomRef} />
-      </div>
+      <section className="chat-panel">
+        <div className="chat-messages">
+          {loading && <p className="chat-loading">กำลังโหลดบทสนทนา...</p>}
+          {!loading && messages.length === 0 && (
+            <div className="chat-empty">
+              <div className="chat-empty-ghost" aria-hidden="true"><i/><i/><span/></div>
+              <span className="chat-sparkle">✦</span>
+              <h2>สวัสดีครับ มีอะไรให้ช่วยไหม?</h2>
+              <p>ลองพิมพ์อธิบายปัญหาที่พบได้เลย ระบบ AI สามารถช่วยวิเคราะห์ปัญหาทางเทคนิคและแนะนำวิธีแก้ไขเบื้องต้นให้คุณได้ทันที</p>
+              <div className="chat-suggestions">
+                {suggestions.map((suggestion) => (
+                  <button key={suggestion.label} type="button" onClick={() => void handleSend(suggestion.text)}>
+                    <span><b>{suggestion.icon}</b><strong>{suggestion.label}</strong></span>
+                    <small>{suggestion.text}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {messages.map((message) => (
+            <ChatBubble
+              key={message.id}
+              message={message}
+              onEscalate={handleEscalate}
+              onResolve={handleResolve}
+            />
+          ))}
+          <div ref={bottomRef} />
+        </div>
 
-      {error && (
-        <p className="px-4 pb-2 text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      )}
-      <ChatInput onSend={handleSend} />
+        {error && <p className="chat-error" role="alert">{error}</p>}
+        <ChatInput onSend={handleSend} />
+      </section>
     </main>
   );
 }

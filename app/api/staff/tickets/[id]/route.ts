@@ -8,7 +8,6 @@ const VALID_STAFF_STATUSES = new Set<TicketStatus>([
   TicketStatus.ASSIGNED,
   TicketStatus.IN_PROGRESS,
   TicketStatus.RESOLVED,
-  TicketStatus.CLOSED,
 ]);
 
 async function authorizeStaff() {

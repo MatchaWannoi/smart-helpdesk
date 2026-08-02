@@ -11,11 +11,15 @@ export default async function ChangePasswordPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-10">
-      <h1 className="text-xl font-semibold">ตั้งรหัสผ่านใหม่</h1>
-      <p className="mt-2 text-sm text-zinc-500">
-        บัญชีนี้ใช้รหัสผ่านชั่วคราวที่ผู้ดูแลระบบออกให้ กรุณาตั้งรหัสผ่านส่วนตัวก่อนใช้งาน Helpdesk
-      </p>
-      <ChangePasswordForm />
+      <section className="password-card">
+        <span className="password-symbol">⌁</span>
+        <span className="eyebrow">ACCOUNT SECURITY</span>
+        <h1 className="text-xl font-semibold">ตั้งรหัสผ่านใหม่</h1>
+        <p className="mt-2 text-sm text-zinc-500">
+          เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านส่วนตัวก่อนใช้งาน Helpdesk
+        </p>
+        <ChangePasswordForm />
+      </section>
     </main>
   );
 }

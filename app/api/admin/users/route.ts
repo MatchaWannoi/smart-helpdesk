@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { Category, Role } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -8,16 +7,6 @@ import { getCurrentUserRole } from "@/lib/current-user-role";
 import { prisma } from "@/lib/prisma";
 
 const CREATABLE_ROLES = new Set<Role>([Role.USER, Role.STAFF]);
-const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-
-function generateTemporaryPassword(length = 12) {
-  const bytes = crypto.randomBytes(length);
-  const chars = Array.from(bytes, (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length]);
-  chars[0] = "A";
-  chars[1] = "7";
-  return chars.join("");
-}
-
 async function authorizeAdmin() {
   const session = await auth();
   if (!session?.user?.id) return null;
@@ -90,7 +79,9 @@ export async function POST(request: Request) {
     selectedSpecialty = specialty as Category;
   }
 
-  const temporaryPassword = generateTemporaryPassword();
+  // ใช้ส่วนหน้า @ ของอีเมลเป็นรหัสผ่านเริ่มต้นตาม workflow ขององค์กร
+  // และบังคับเปลี่ยนทันทีด้วย mustChangePassword ก่อนเข้าใช้งานส่วนอื่น
+  const temporaryPassword = normalizedEmail.split("@")[0];
 
   try {
     const user = await prisma.user.create({

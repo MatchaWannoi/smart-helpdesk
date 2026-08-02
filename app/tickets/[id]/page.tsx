@@ -6,6 +6,7 @@ import { ChatBubble } from "@/components/chat/ChatBubble";
 import type { ChatMessage } from "@/hooks/useChatMessages";
 import { prisma } from "@/lib/prisma";
 import { UserReplyForm } from "./UserReplyForm";
+import { EvaluationForm } from "./EvaluationForm";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: "รอมอบหมาย",
@@ -57,6 +58,7 @@ export default async function TicketDetailPage({
     include: {
       messages: { orderBy: { createdAt: "asc" } },
       assignedStaff: { select: { name: true } },
+      evaluation: true,
     },
   });
 
@@ -129,6 +131,14 @@ export default async function TicketDetailPage({
           </div>
         )}
       </section>
+
+      {ticket.status === TicketStatus.RESOLVED && <EvaluationForm ticketId={ticket.id} />}
+      {ticket.evaluation && (
+        <section className="evaluation-summary">
+          <strong>ผลประเมินการบริการ</strong><span>{"★".repeat(ticket.evaluation.rating)}{"☆".repeat(5 - ticket.evaluation.rating)}</span>
+          {ticket.evaluation.comment && <p>{ticket.evaluation.comment}</p>}
+        </section>
+      )}
 
       <UserReplyForm
         ticketId={ticket.id}
