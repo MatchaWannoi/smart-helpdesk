@@ -8,7 +8,6 @@ const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: "ASSIGNED", label: "มอบหมายแล้ว" },
   { value: "IN_PROGRESS", label: "กำลังดำเนินการ" },
   { value: "RESOLVED", label: "แก้ไขแล้ว" },
-  { value: "CLOSED", label: "ปิดเคส" },
 ];
 
 interface UpdateTicketFormProps {
@@ -29,6 +28,10 @@ export function UpdateTicketForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (currentStatus === "CLOSED") {
+    return <p className="text-sm text-zinc-500">ผู้ใช้ยืนยันผลและปิดคำร้องนี้แล้ว</p>;
+  }
 
   async function handleSubmit() {
     setSubmitting(true);

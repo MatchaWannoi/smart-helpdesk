@@ -1,65 +1,41 @@
-import Image from "next/image";
+import Link from "next/link";
+import { auth } from "@/auth";
+import AdminDashboardPage from "@/app/admin/page";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+  if (session?.user?.role === "ADMIN") {
+    return <AdminDashboardPage />;
+  }
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="landing">
+      <section className="hero">
+        <div className="hero-copy">
+          <span className="eyebrow">AI-POWERED SUPPORT</span>
+          <h1>แจ้งปัญหาไอที<br/><span>ง่ายขึ้นกว่าเดิม</span></h1>
+          <p>ผู้ช่วยอัจฉริยะพร้อมรับเรื่อง วิเคราะห์ปัญหาเบื้องต้น และส่งต่อให้เจ้าหน้าที่ที่เหมาะสม</p>
+          <div className="hero-actions">
+            <Link className="button-primary" href={session?.user ? "/chat" : "/login"}>{session?.user ? "เริ่มแชทกับ AI" : "เข้าสู่ระบบ"}</Link>
+            {session?.user && <Link className="button-secondary" href="/tickets">ดูคำร้องของฉัน</Link>}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="hero-visual" aria-hidden="true">
+          <div className="orb orb-one"/><div className="orb orb-two"/>
+          <div className="bot-card">
+            <svg viewBox="0 0 180 160" fill="none">
+              <path d="M44 42h92a25 25 0 0 1 25 25v43a25 25 0 0 1-25 25H44a25 25 0 0 1-25-25V67a25 25 0 0 1 25-25Z" fill="white"/>
+              <path d="M55 61h70a22 22 0 0 1 22 22v15a22 22 0 0 1-22 22H55a22 22 0 0 1-22-22V83a22 22 0 0 1 22-22Z" fill="#0d3b80"/>
+              <circle cx="70" cy="90" r="8" fill="white"/><circle cx="110" cy="90" r="8" fill="white"/>
+              <path d="M90 26v16M19 76H8v28h11M161 76h11v28h-11" stroke="#1761dc" strokeWidth="9" strokeLinecap="round"/>
+            </svg>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+      <section className="feature-strip">
+        <div><b>01</b><span><strong>แจ้งปัญหาได้ทันที</strong><small>พิมพ์คุยกับ AI ได้อย่างเป็นธรรมชาติ</small></span></div>
+        <div><b>02</b><span><strong>วิเคราะห์อัตโนมัติ</strong><small>ช่วยตอบและจัดหมวดหมู่ปัญหา</small></span></div>
+        <div><b>03</b><span><strong>ติดตามสถานะง่าย</strong><small>ทุกคำร้องอยู่ในที่เดียว</small></span></div>
+      </section>
+    </main>
   );
 }

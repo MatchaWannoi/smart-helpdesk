@@ -27,9 +27,9 @@ export function ChatInput({ onSend }: ChatInputProps) {
   };
 
   return (
-    <div className="flex gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800">
-      <input
-        className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none focus:border-blue-500 disabled:opacity-60 dark:border-zinc-700"
+    <div className="chat-input">
+      <textarea
+        className="chat-textbox"
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
@@ -40,15 +40,20 @@ export function ChatInput({ onSend }: ChatInputProps) {
         }}
         placeholder="พิมพ์ปัญหาที่พบ..."
         disabled={sending}
+        rows={1}
       />
       <button
-        className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="chat-send"
         type="button"
         onClick={() => void handleSend()}
         disabled={sending || !text.trim()}
       >
-        {sending ? "กำลังส่ง..." : "ส่ง"}
+        {sending ? "..." : "➤"}
       </button>
+      <div className="chat-input-meta">
+        <span>◇ ENTERPRISE AI SECURITY ACTIVE</span>
+        <span>กด Enter เพื่อส่งข้อความ</span>
+      </div>
     </div>
   );
 }

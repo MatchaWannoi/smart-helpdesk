@@ -1,9 +1,5 @@
 "use client";
 
-// "use client" จำเป็นเพราะหน้านี้ต้องใช้ useState (เก็บค่าที่พิมพ์ในฟอร์ม)
-// และ event handler (onSubmit) ซึ่งทำงานฝั่ง browser เท่านั้น
-// ต่างจาก default ของ Next.js App Router ที่ทุกหน้าเป็น Server Component
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -19,76 +15,38 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    // signIn("credentials", ...) ไปเรียก authorize() ที่เขียนไว้ใน auth.ts
-    // redirect: false เพื่อจัดการเองว่าจะทำอะไรต่อ (แสดง error หรือเปลี่ยนหน้า)
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
+    const result = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
-
-    if (result?.error) {
-      setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-      return;
-    }
-
-    // Proxy จะบังคับผู้ใช้ที่ได้รหัสผ่านชั่วคราวไปเปลี่ยนรหัสผ่านก่อน
-    router.push("/chat");
-    router.refresh(); // บังคับให้ server component รู้ว่า session เปลี่ยนแล้ว
+    if (result?.error) return setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+    router.push("/");
+    router.refresh();
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto", padding: 24 }}>
-      <h1 style={{ marginBottom: 24 }}>เข้าสู่ระบบ</h1>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="email" style={{ display: "block", marginBottom: 4 }}>
-            อีเมล
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
+    <main className="login-page">
+      <section className="login-intro">
+        <div className="login-brand-line"><span className="mini-bot">✦</span><span><b>SMART HELPDESK</b><small>with AI</small></span></div>
+        <div>
+          <span className="eyebrow">YOUR SMART IT ASSISTANT</span>
+          <h1>มีปัญหาไอที<br/><em>ให้เราช่วยดูแล</em></h1>
+          <p>ระบบแจ้งปัญหาและติดตามคำร้อง พร้อม AI ช่วยตอบคำถามและวิเคราะห์ปัญหาเบื้องต้นตลอดเวลา</p>
         </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="password" style={{ display: "block", marginBottom: 4 }}>
-            รหัสผ่าน
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
+        <div className="login-art" aria-hidden="true"><span>● ●</span></div>
+      </section>
+      <section className="login-panel">
+        <div className="login-card">
+          <div className="login-heading"><span className="login-icon">↗</span><div><h2>ยินดีต้อนรับ</h2><p>เข้าสู่ระบบเพื่อใช้งาน Smart Helpdesk</p></div></div>
+          <form onSubmit={handleSubmit} className="form-stack">
+            <label htmlFor="email">อีเมล</label>
+            <div className="input-wrap"><span>✉</span><input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" required /></div>
+            <label htmlFor="password">รหัสผ่าน</label>
+            <div className="input-wrap"><span>⌑</span><input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="กรอกรหัสผ่านของคุณ" required /></div>
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <button className="login-submit" type="submit" disabled={loading}>{loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}<span>→</span></button>
+          </form>
+          <p className="login-note">ยังไม่มีบัญชี? กรุณาติดต่อผู้ดูแลระบบขององค์กร</p>
         </div>
-
-        {error && (
-          <p style={{ color: "red", marginBottom: 16 }}>{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ width: "100%", padding: 10, cursor: "pointer" }}
-        >
-          {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
-        </button>
-      </form>
-
-      <p style={{ marginTop: 16, fontSize: 14, color: "#71717a" }}>
-        ยังไม่มีบัญชี? กรุณาติดต่อผู้ดูแลระบบขององค์กร
-      </p>
-    </div>
+      </section>
+    </main>
   );
 }

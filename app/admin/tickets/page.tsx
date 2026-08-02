@@ -1,4 +1,5 @@
 import { Role, TicketStatus, type Category, type Urgency } from "@prisma/client";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getCurrentUserRole } from "@/lib/current-user-role";
@@ -6,11 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { AssignStaffForm } from "./AssignStaffForm";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
-  [TicketStatus.OPEN]: "Open",
-  [TicketStatus.ASSIGNED]: "Assigned",
-  [TicketStatus.IN_PROGRESS]: "In progress",
-  [TicketStatus.RESOLVED]: "Resolved",
-  [TicketStatus.CLOSED]: "Closed",
+  [TicketStatus.OPEN]: "รอมอบหมาย",
+  [TicketStatus.ASSIGNED]: "มอบหมายแล้ว",
+  [TicketStatus.IN_PROGRESS]: "กำลังดำเนินการ",
+  [TicketStatus.RESOLVED]: "แก้ไขแล้ว",
+  [TicketStatus.CLOSED]: "ปิดเคส",
 };
 
 const STATUS_BADGE_CLASS: Record<TicketStatus, string> = {
@@ -27,16 +28,16 @@ const STATUS_BADGE_CLASS: Record<TicketStatus, string> = {
 };
 
 const CATEGORY_LABEL: Record<Category, string> = {
-  NETWORK: "Network",
-  HARDWARE: "Hardware",
-  SOFTWARE: "Software",
-  ACCOUNT: "Account",
+  NETWORK: "เครือข่าย",
+  HARDWARE: "ฮาร์ดแวร์",
+  SOFTWARE: "ซอฟต์แวร์",
+  ACCOUNT: "บัญชีผู้ใช้",
 };
 
 const URGENCY_LABEL: Record<Urgency, string> = {
-  LOW: "Low",
-  MEDIUM: "Medium",
-  HIGH: "High",
+  LOW: "ต่ำ",
+  MEDIUM: "ปานกลาง",
+  HIGH: "สูง",
 };
 
 const LOCKED_STATUSES = new Set<TicketStatus>([
@@ -52,7 +53,11 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-export default async function AdminTicketsPage() {
+export default async function AdminTicketsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -65,8 +70,16 @@ export default async function AdminTicketsPage() {
     redirect("/chat");
   }
 
+  const requestedStatus = (await searchParams).status;
+  const selectedStatus = Object.values(TicketStatus).includes(
+    requestedStatus as TicketStatus,
+  )
+    ? (requestedStatus as TicketStatus)
+    : null;
+
   const [tickets, staffList] = await Promise.all([
     prisma.ticket.findMany({
+      where: selectedStatus ? { status: selectedStatus } : undefined,
       orderBy: { createdAt: "desc" },
       include: {
         user: { select: { name: true, email: true } },
@@ -82,59 +95,76 @@ export default async function AdminTicketsPage() {
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-          Admin ticket assignment
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Review all tickets and assign them to staff members.
-        </p>
+    <main className="admin-tickets-page">
+      <div className="admin-tickets-heading">
+        <div>
+          <span>TICKET MANAGEMENT</span>
+          <h1>
+          จัดการและมอบหมายคำร้อง
+          </h1>
+          <p>
+          ตรวจสอบคำร้องทั้งหมดและมอบหมายให้เจ้าหน้าที่ที่เหมาะสม
+          </p>
+        </div>
+        <div className="ticket-heading-actions">
+          <form className="ticket-filter" method="get">
+            <span className="filter-icon">⌕</span>
+            <div className="ticket-filter-controls">
+              <select name="status" defaultValue={selectedStatus ?? ""} aria-label="กรองคำร้องตามสถานะ">
+                <option value="">ทุกสถานะ</option>
+                {Object.values(TicketStatus).map((status) => (
+                  <option key={status} value={status}>{STATUS_LABEL[status]}</option>
+                ))}
+              </select>
+              <button type="submit">กรอง</button>
+              {selectedStatus && <Link href="/admin/tickets" title="ล้างตัวกรอง">ล้าง</Link>}
+            </div>
+            <span className="filter-result">{tickets.length} รายการ</span>
+          </form>
+        </div>
       </div>
 
       {tickets.length === 0 ? (
-        <div className="border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          No tickets found.
+        <div className="admin-ticket-empty">
+          ไม่พบคำร้องในสถานะที่เลือก
         </div>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="admin-ticket-list">
           {tickets.map((ticket) => (
             <li
               key={ticket.id}
-              className="border border-zinc-200 p-4 dark:border-zinc-800"
+              className={`admin-ticket-card ${LOCKED_STATUSES.has(ticket.status) ? "is-locked" : ""}`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {ticket.title ?? "Untitled ticket"}
+              <div className="ticket-card-head">
+                <div>
+                  <h2>
+                    {ticket.title ?? "ไม่มีหัวข้อ"}
                   </h2>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Created by {ticket.user.name} ({ticket.user.email}) on{" "}
+                  <p>
+                    แจ้งโดย {ticket.user.name} ({ticket.user.email}) เมื่อ{" "}
                     {formatDate(ticket.createdAt)}
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[ticket.status]}`}
+                  className={`ticket-status ${STATUS_BADGE_CLASS[ticket.status]}`}
                 >
                   {STATUS_LABEL[ticket.status]}
                 </span>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
-                <span>ID: {ticket.id}</span>
+              <div className="ticket-facts">
+                <div><span>ID</span><strong>{ticket.id}</strong></div>
                 {ticket.category && (
-                  <span>Category: {CATEGORY_LABEL[ticket.category]}</span>
+                  <div><span>หมวดหมู่</span><strong>{CATEGORY_LABEL[ticket.category]}</strong></div>
                 )}
                 {ticket.urgency && (
-                  <span>Urgency: {URGENCY_LABEL[ticket.urgency]}</span>
+                  <div><span>ความเร่งด่วน</span><strong className={`urgency-${ticket.urgency.toLowerCase()}`}>{URGENCY_LABEL[ticket.urgency]}</strong></div>
                 )}
-                <span>Messages: {ticket._count.messages}</span>
-                <span>
-                  Current staff: {ticket.assignedStaff?.name ?? "Unassigned"}
-                </span>
+                <div><span>เจ้าหน้าที่</span><strong>{ticket.assignedStaff?.name ?? "ยังไม่ได้มอบหมาย"}</strong></div>
+                <div><span>ข้อความ</span><strong>{ticket._count.messages} ข้อความ</strong></div>
               </div>
 
-              <div className="mt-4">
+              <div className="ticket-assignment">
                 <AssignStaffForm
                   ticketId={ticket.id}
                   staffList={staffList}

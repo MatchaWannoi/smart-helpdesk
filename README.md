@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## AI answer mode
+
+By default the AI answers directly from the model without querying the FAQ table.
+The FAQ data and Admin UI remain available. To switch back to FAQ-grounded
+answers, add this environment variable and restart the server:
+
+```env
+AI_USE_FAQ=true
+```
+
+Use `AI_USE_FAQ=false` or omit the variable to use direct-answer mode.
+
 ## Getting Started
 
 First, run the development server:

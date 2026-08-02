@@ -19,10 +19,10 @@ interface AssignStaffFormProps {
 }
 
 const CATEGORY_LABEL: Record<Category, string> = {
-  NETWORK: "Network",
-  HARDWARE: "Hardware",
-  SOFTWARE: "Software",
-  ACCOUNT: "Account",
+  NETWORK: "เครือข่าย",
+  HARDWARE: "ฮาร์ดแวร์",
+  SOFTWARE: "ซอฟต์แวร์",
+  ACCOUNT: "บัญชีผู้ใช้",
 };
 
 export function AssignStaffForm({
@@ -39,9 +39,7 @@ export function AssignStaffForm({
 
   if (isLocked) {
     return (
-      <p className="text-xs text-zinc-500">
-        This ticket is resolved or closed, so staff assignment is locked.
-      </p>
+      <div className="assignment-locked"><span>i</span>คำร้องนี้แก้ไขหรือปิดแล้ว จึงไม่สามารถเปลี่ยนเจ้าหน้าที่ได้</div>
     );
   }
 
@@ -74,13 +72,13 @@ export function AssignStaffForm({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="assign-staff-form">
       <select
         value={staffId}
         onChange={(event) => setStaffId(event.target.value)}
-        className="min-w-48 border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+        className="assign-staff-select"
       >
-        <option value="">Select staff...</option>
+        <option value="">เลือกเจ้าหน้าที่...</option>
         {staffList.map((staff) => {
           const isSuggested =
             !!staff.specialty && staff.specialty === suggestedCategory;
@@ -89,7 +87,7 @@ export function AssignStaffForm({
             <option key={staff.id} value={staff.id}>
               {staff.name}
               {staff.specialty ? ` (${CATEGORY_LABEL[staff.specialty]})` : ""}
-              {isSuggested ? " - category match" : ""}
+              {isSuggested ? " — ตรงกับหมวดหมู่" : ""}
             </option>
           );
         })}
@@ -99,13 +97,13 @@ export function AssignStaffForm({
         type="button"
         onClick={() => void handleAssign()}
         disabled={isSubmitting || !staffId}
-        className="bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="assign-staff-button"
       >
         {isSubmitting
-          ? "Assigning..."
+          ? "กำลังบันทึก..."
           : currentStaffId
-            ? "Change staff"
-            : "Assign"}
+            ? "เปลี่ยนเจ้าหน้าที่"
+            : "มอบหมาย"}
       </button>
 
       {error && <span className="text-xs text-red-600">{error}</span>}

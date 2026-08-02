@@ -41,7 +41,7 @@ async function getRelevantFaqs(userMessage: string) {
   return matched.length > 0 ? matched : allFaqs;
 }
 
-function buildPrompt(userMessage: string, faqs: FAQ[]) {
+function buildFaqPrompt(userMessage: string, faqs: FAQ[]) {
   const faqList = faqs
     .map(
       (faq) =>
@@ -66,6 +66,33 @@ ${faqList}
   "confident": true หรือ false (true ถ้ามั่นใจว่า FAQ ข้อใดข้อหนึ่งตอบปัญหานี้ได้ตรงๆ),
   "suggestedFaqId": "id ของ FAQ ที่ใกล้เคียงที่สุด หรือ null ถ้าไม่มีข้อไหนตรงเลย",
   "aiReplyMessage": "ข้อความสุภาพที่จะตอบกลับผู้ใช้โดยตรง ถ้า confident เป็น true ให้สรุปคำตอบจาก FAQ นั้นเป็นภาษาที่เข้าใจง่าย ถ้า confident เป็น false ให้บอกผู้ใช้ว่ากำลังจะสร้าง ticket ส่งต่อเจ้าหน้าที่"
+}`;
+}
+
+function buildDirectPrompt(userMessage: string) {
+  return `คุณคือ AI ผู้ช่วยฝ่าย IT Helpdesk ตอบคำถามโดยใช้ความรู้ทั่วไปของโมเดลและแนวปฏิบัติด้าน IT support โดยไม่อ้างอิงฐานข้อมูล FAQ
+
+วิเคราะห์ปัญหาและตอบเป็น JSON เท่านั้น ห้ามมี markdown หรือข้อความนอก JSON
+หมวดหมู่: NETWORK, HARDWARE, SOFTWARE, ACCOUNT
+ความเร่งด่วน: LOW, MEDIUM, HIGH
+
+หลักการตอบ:
+- ให้คำแนะนำเป็นขั้นตอนที่ปลอดภัย ชัดเจน และทำตามได้
+- ห้ามแต่งข้อมูลเฉพาะองค์กร เช่น URL ภายใน รหัสผ่าน IP address หรือ policy ที่ไม่มีในข้อความ
+- ห้ามขอรหัสผ่าน OTP หรือข้อมูลลับ
+- confident=true เมื่อสามารถให้วิธีตรวจสอบหรือแก้ไขเบื้องต้นที่ปลอดภัยและเป็นประโยชน์ได้
+- confident=false เมื่อข้อมูลไม่พอ เป็นเรื่องเฉพาะระบบภายใน มีความเสี่ยงด้านบัญชี/ความปลอดภัย หรือต้องให้เจ้าหน้าที่ตรวจอุปกรณ์
+- เมื่อ confident=false ให้อธิบายสั้นๆ ว่าจะส่งเรื่องต่อเจ้าหน้าที่
+
+ข้อความจากผู้ใช้: "${userMessage}"
+
+ตอบตาม schema:
+{
+  "category": "NETWORK | HARDWARE | SOFTWARE | ACCOUNT",
+  "urgency": "LOW | MEDIUM | HIGH",
+  "confident": true หรือ false,
+  "suggestedFaqId": null,
+  "aiReplyMessage": "คำตอบภาษาไทยสำหรับผู้ใช้"
 }`;
 }
 
@@ -96,8 +123,12 @@ export async function analyzeMessage(userMessage: string): Promise<AiAnalysisRes
       throw new Error("GEMINI_API_KEY is not configured");
     }
 
-    const faqs = await getRelevantFaqs(userMessage);
-    const prompt = buildPrompt(userMessage, faqs);
+    // ค่าเริ่มต้นคือโหมดตอบตรงจากโมเดล ไม่อ่าน FAQ
+    // ตั้ง AI_USE_FAQ=true เมื่อต้องการกลับไปใช้ฐานความรู้เดิม
+    const useFaq = process.env.AI_USE_FAQ === "true";
+    const prompt = useFaq
+      ? buildFaqPrompt(userMessage, await getRelevantFaqs(userMessage))
+      : buildDirectPrompt(userMessage);
     const result = await model.generateContent(prompt);
 
     return parseAiResponse(result.response.text());
