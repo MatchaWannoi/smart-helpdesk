@@ -78,41 +78,37 @@ export default async function StaffTicketDetailPage({
   }));
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <main className="portal-page ticket-detail-page staff-portal">
       <Link
         href="/staff/tickets"
-        className="mb-4 inline-block text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+        className="portal-back"
       >
-        กลับไปหน้ารายการ ticket
+        ← กลับไปหน้างานของฉัน
       </Link>
 
-      <section className="mb-6 border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className="ticket-detail-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <span className="portal-kicker">ASSIGNED TICKET</span>
+            <h1>
               {ticket.title ?? "ไม่มีหัวข้อ"}
             </h1>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p>
               แจ้งโดย {ticket.user.name} ({ticket.user.email})
             </p>
           </div>
-          <span className="shrink-0 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+          <span className={`status-badge status-${ticket.status.toLowerCase()}`}>
             {STATUS_LABEL[ticket.status]}
           </span>
         </div>
 
-        <dl className="mt-4 grid grid-cols-[130px_1fr] gap-x-3 gap-y-2 text-sm">
-          <dt className="text-zinc-500">สร้างเมื่อ</dt>
-          <dd>{formatDate(ticket.createdAt)}</dd>
-
-          <dt className="text-zinc-500">หมวดหมู่</dt>
-          <dd>{ticket.category ? CATEGORY_LABEL[ticket.category] : "ไม่ระบุ"}</dd>
-
-          <dt className="text-zinc-500">ความเร่งด่วน</dt>
-          <dd>{ticket.urgency ? URGENCY_LABEL[ticket.urgency] : "ไม่ระบุ"}</dd>
+        <dl className="ticket-detail-facts">
+          <div><dt>สร้างเมื่อ</dt><dd>{formatDate(ticket.createdAt)}</dd></div>
+          <div><dt>หมวดหมู่</dt><dd>{ticket.category ? CATEGORY_LABEL[ticket.category] : "ไม่ระบุ"}</dd></div>
+          <div><dt>ความเร่งด่วน</dt><dd>{ticket.urgency ? URGENCY_LABEL[ticket.urgency] : "ไม่ระบุ"}</dd></div>
         </dl>
 
-        <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="staff-update-panel">
           <UpdateTicketForm
             ticketId={ticket.id}
             currentStatus={ticket.status}
@@ -121,10 +117,8 @@ export default async function StaffTicketDetailPage({
         </div>
       </section>
 
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          ประวัติแชท
-        </h2>
+      <section className="ticket-conversation">
+        <div className="section-heading"><span>ประวัติการสนทนา</span><small>{chatMessages.length} ข้อความ</small></div>
         {chatMessages.length === 0 ? (
           <p className="text-sm text-zinc-500">ยังไม่มีข้อความใน ticket นี้</p>
         ) : (

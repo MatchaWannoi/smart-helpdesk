@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
 
 interface ChatInputProps {
   onSend: (content: string) => Promise<void>;
@@ -40,6 +41,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
         }}
         placeholder="พิมพ์ปัญหาที่พบ..."
         disabled={sending}
+        maxLength={MAX_MESSAGE_LENGTH}
         rows={1}
       />
       <button
@@ -52,7 +54,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
       </button>
       <div className="chat-input-meta">
         <span>◇ ENTERPRISE AI SECURITY ACTIVE</span>
-        <span>กด Enter เพื่อส่งข้อความ</span>
+        <span>{text.length.toLocaleString()} / {MAX_MESSAGE_LENGTH.toLocaleString()} · กด Enter เพื่อส่งข้อความ</span>
       </div>
     </div>
   );

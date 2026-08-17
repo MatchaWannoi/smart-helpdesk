@@ -10,7 +10,7 @@ export default async function ChangePasswordPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-10">
+    <main className="account-page">
       <section className="password-card">
         <span className="password-symbol">⌁</span>
         <span className="eyebrow">ACCOUNT SECURITY</span>

@@ -1,10 +1,10 @@
 # Smart Helpdesk with AI — Project Summary
 
-อัปเดตล่าสุด: 14 กรกฎาคม 2026
+อัปเดตล่าสุด: 2 สิงหาคม 2026
 
 ## 1. ภาพรวม
 
-Smart Helpdesk เป็นเว็บแอป full-stack สำหรับงาน IT Support ภายในบริษัทหรือสถานศึกษา ผู้ใช้แจ้งปัญหาผ่านแชท จากนั้น Gemini จะวิเคราะห์หมวดหมู่ ความเร่งด่วน และ FAQ ที่เกี่ยวข้อง หาก AI ไม่มั่นใจหรือผู้ใช้ยืนยันว่าคำตอบยังแก้ปัญหาไม่ได้ ระบบจะสร้าง Ticket เพื่อส่งต่อเจ้าหน้าที่
+Smart Helpdesk เป็นเว็บแอป full-stack สำหรับงาน IT Support ภายในบริษัทหรือสถานศึกษา ผู้ใช้แจ้งปัญหาผ่านแชท จากนั้น Gemini จะวิเคราะห์หมวดหมู่ ความเร่งด่วน และสร้างคำแนะนำเบื้องต้น ปัจจุบันระบบตั้งให้ Gemini ตอบจากความรู้ทั่วไปของโมเดลเป็นค่าเริ่มต้น โดยสามารถเปิดโหมดอ้างอิง FAQ ได้ผ่าน Environment Variable หาก AI ไม่มั่นใจหรือผู้ใช้ยืนยันว่าคำตอบยังแก้ปัญหาไม่ได้ ระบบจะสร้าง Ticket เพื่อส่งต่อเจ้าหน้าที่
 
 ระบบใช้รูปแบบ **Admin-managed accounts**: ไม่มีการสมัครสมาชิกสาธารณะ Admin เป็นผู้สร้างบัญชี USER/STAFF และระบบออกรหัสผ่านชั่วคราวให้ ผู้ใช้ต้องเปลี่ยนรหัสผ่านก่อนเข้าใช้งานส่วนอื่น
 
@@ -65,7 +65,7 @@ Smart Helpdesk เป็นเว็บแอป full-stack สำหรับ�
 | # | Process | สถานะในโค้ด | รายละเอียด |
 |---|---|---|---|
 | 1.0 | ตรวจสอบสิทธิ์และเข้าสู่ระบบ | ทำแล้ว | ตรวจสอบบัญชี สถานะบัญชี Role และบังคับเปลี่ยนรหัสผ่านครั้งแรก |
-| 2.0 | รับแจ้งและวิเคราะห์ปัญหาด้วย AI | ทำแล้ว | รับข้อความ ค้น FAQ ส่งให้ Gemini วิเคราะห์ และตอบคำแนะนำแก่ผู้ใช้ |
+| 2.0 | รับแจ้งและวิเคราะห์ปัญหาด้วย AI | ทำแล้ว | รับข้อความ ส่งให้ Gemini วิเคราะห์ และตอบคำแนะนำ โดยเลือกโหมดตอบตรงหรือโหมด FAQ ผ่าน Environment Variable |
 | 3.0 | สร้างและติดตาม Ticket | ทำแล้ว | สร้าง Ticket อัตโนมัติหรือจากการส่งต่อ และให้ผู้ใช้ติดตามรายละเอียดกับสถานะ |
 | 4.0 | มอบหมาย Ticket | ทำแล้ว | Admin เลือก Staff ที่ active โดยพิจารณาหมวดปัญหาและความเชี่ยวชาญ |
 | 5.0 | ดำเนินการแก้ไข Ticket | ทำแล้ว | Staff ดูงาน สนทนากับผู้ใช้ อัปเดตสถานะ และบันทึกวิธีแก้ไข |
@@ -84,12 +84,25 @@ Smart Helpdesk เป็นเว็บแอป full-stack สำหรับ�
 ### Process 2.0: รับแจ้งและวิเคราะห์ปัญหาด้วย AI
 
 1. USER ส่งข้อความแจ้งปัญหาที่ `/chat`
-2. ระบบบันทึกข้อความผู้ใช้ลง D3
-3. ระบบอ่าน FAQ ที่เกี่ยวข้องจาก D2 โดย pre-filter ด้วย keywords
-4. ระบบส่งข้อความและ FAQ ที่คัดกรองแล้วให้ Gemini
-5. Gemini คืน category, urgency, confident, suggestedFaqId และ aiReplyMessage
-6. ระบบบันทึกคำตอบและผลวิเคราะห์ลง D3 แล้วแสดงคำตอบแก่ USER
-7. ถ้า AI ไม่มั่นใจ ระบบส่งข้อมูลปัญหาไปยัง Process 3.0
+2. ระบบส่งข้อความให้ Gemini วิเคราะห์ผ่าน `analyzeMessage()`
+3. Gemini คืน `category`, `urgency`, `confident`, `suggestedFaqId` และ `aiReplyMessage`
+4. ระบบบันทึกข้อความ USER คำตอบ AI และผลวิเคราะห์ลง D3
+5. ถ้า `confident = true` ระบบแสดงคำแนะนำและให้ USER ยืนยันว่าแก้ปัญหาได้หรือไม่
+6. ถ้า `confident = false` ระบบสร้าง Ticket และผูกข้อความ USER/AI เข้ากับ Ticket ภายใน transaction เดียวกัน
+7. หาก Gemini ใช้งานไม่ได้หรือผลลัพธ์ผิดรูปแบบ ระบบใช้ fallback response และสร้าง Ticket ส่งต่อเจ้าหน้าที่
+
+#### โหมดการตอบของ AI
+
+ระบบรองรับ 2 โหมดใน `lib/gemini.ts`:
+
+| โหมด | การตั้งค่า | พฤติกรรม |
+|---|---|---|
+| Direct AI | ไม่กำหนด `AI_USE_FAQ` หรือค่าไม่ใช่ `true` | Gemini ใช้ความรู้ทั่วไปและแนวปฏิบัติด้าน IT Support เพื่อสร้างคำแนะนำเอง โดยไม่อ่าน FAQ |
+| FAQ-assisted | `AI_USE_FAQ=true` | ระบบค้น FAQ ด้วย `keywords` แล้วส่ง FAQ ที่เกี่ยวข้องให้ Gemini สรุปเป็นคำตอบ |
+
+สถานะปัจจุบัน ณ วันที่ 2 สิงหาคม 2026 คือ **Direct AI** เนื่องจาก `.env` ยังไม่ได้กำหนด `AI_USE_FAQ` ดังนั้น Gemini เป็นผู้สร้างคำตอบเอง ไม่ได้ดึงคำตอบจาก FAQ
+
+ข้อจำกัดปัจจุบัน: ระบบเป็นการเลือกใช้โหมดใดโหมดหนึ่ง ยังไม่มีลำดับแบบ Hybrid ที่ค้น FAQ ก่อน แล้วจึงใช้ความรู้ทั่วไปของ Gemini เมื่อไม่พบ FAQ ที่ตรง
 
 ### Process 3.0: สร้างและติดตาม Ticket
 
@@ -212,16 +225,46 @@ External Entity ใน DFD ได้แก่ ผู้ใช้ทั่วไ�
 
 ทุก API ที่จัดการบัญชีตรวจ authentication และ authorization ฝั่ง server ไม่อาศัยเพียงการซ่อน UI
 
-## 9. Environment Variables
+## 9. UI และ Design System
+
+หน้าเว็บใช้ธีมหลักจาก Landing Page เป็นฐาน โดยใช้สีกรมท่า–น้ำเงิน (`#071e3d`, `#1761dc`) พื้นหลังฟ้าอ่อน และพื้นผิวการ์ดสีขาว เพื่อให้หน้าสาธารณะ ฝั่งผู้ใช้ และพื้นที่ทำงานของเจ้าหน้าที่มีภาพลักษณ์เดียวกัน
+
+งาน UI ล่าสุดที่ทำแล้ว:
+
+- ปรับหน้า `/tickets` ของ USER เป็นหน้า Portal พร้อมหัวข้อ ปุ่มเริ่มแชท สรุปจำนวนคำร้อง และรายการ Ticket แบบการ์ด
+- ปรับหน้า `/staff/tickets` เป็น Staff Workspace พร้อมสรุปงานรอดำเนินการ กำลังแก้ไข และเสร็จสิ้น
+- ปรับหน้า `/tickets/[id]` และ `/staff/tickets/[id]` ให้ข้อมูล Ticket สถานะ รายละเอียด และประวัติสนทนาอ่านง่ายขึ้น
+- ปรับ Status Badge ให้แยกสถานะด้วยสีและรูปแบบเดียวกันทั้งระบบ
+- ปรับฟอร์มตอบกลับ ฟอร์มอัปเดตสถานะ และช่องบันทึกวิธีแก้ไขให้เข้ากับธีมหลัก
+- เพิ่ม Empty State สำหรับกรณียังไม่มี Ticket หรืองานที่ได้รับมอบหมาย
+- เปลี่ยนหน้า AI Chat จากโทนม่วงให้กลับมาใช้กรมท่า–น้ำเงินตาม Landing Page
+- เพิ่ม hover, focus, shadow และ transition โดยไม่เปลี่ยนพฤติกรรมเดิมของระบบ
+- เพิ่ม Responsive Layout สำหรับแท็บเล็ตและมือถือ รวมถึงการจัดเรียงการ์ด ข้อมูล Ticket และปุ่มฟอร์ม
+
+ไฟล์หลักที่แก้ไขในรอบนี้:
+
+- `app/globals.css`
+- `app/tickets/page.tsx`
+- `app/tickets/[id]/page.tsx`
+- `app/tickets/[id]/UserReplyForm.tsx`
+- `app/staff/tickets/page.tsx`
+- `app/staff/tickets/[id]/page.tsx`
+- `app/staff/tickets/[id]/StaffReplyForm.tsx`
+- `app/staff/tickets/[id]/UpdateTicketForm.tsx`
+
+## 10. Environment Variables
 
 ```env
 DATABASE_URL="postgresql://..."
 DIRECT_URL="postgresql://..."
 AUTH_SECRET="..."
 GEMINI_API_KEY="..."
+# ไม่กำหนดหรือกำหนดเป็น false = Gemini ตอบจากความรู้ทั่วไป
+# กำหนดเป็น true = ส่ง FAQ ที่เกี่ยวข้องให้ Gemini ใช้ประกอบคำตอบ
+AI_USE_FAQ="false"
 ```
 
-## 10. คำสั่งพัฒนา
+## 11. คำสั่งพัฒนา
 
 ```powershell
 npm.cmd run dev
@@ -235,7 +278,9 @@ npm.cmd run build
 
 การแก้ schema รอบ Admin-managed accounts ถูก sync กับฐานข้อมูล Supabase แล้วเมื่อ 14 กรกฎาคม 2026
 
-## 11. สถานะและงานถัดไป
+การปรับ UI ฝั่ง USER และ STAFF ผ่าน `npm.cmd run build` แล้วเมื่อ 2 สิงหาคม 2026 โดย Next.js compile, TypeScript check และ static page generation สำเร็จ
+
+## 12. สถานะและงานถัดไป
 
 สิ่งที่ทำแล้ว:
 
@@ -244,14 +289,17 @@ npm.cmd run build
 - Temporary password, forced password change, reset และ account suspension
 - AI FAQ response และ automatic/manual escalation
 - User/Admin/Staff Ticket pages และ message thread
+- Evaluation UI/API และขั้นตอนให้ USER ยืนยันผลหรือเปิดงานกลับ
+- หน้า Admin สำหรับจัดการ FAQ และรายงานสรุป
+- Dashboard และ UI ฝั่ง Admin
+- ธีมกรมท่า–น้ำเงินสำหรับ USER/STAFF พร้อม Responsive UI
 - Prisma schema sync, lint, type-check และ production build
 
 สิ่งที่ควรทำต่อก่อน Production:
 
-- เพิ่ม Evaluation UI/API และให้ USER เป็นผู้ยืนยัน `RESOLVED → CLOSED`
 - เพิ่ม automated tests สำหรับ authorization และ account lifecycle
 - เพิ่ม rate limiting และ audit log สำหรับ login/reset/disable
-- เพิ่ม SLA, notification และ dashboard
-- เพิ่มหน้าจัดการ FAQ
+- เพิ่ม SLA และ notification
 - เพิ่ม Prisma migration history แทนการพึ่ง `db push`
 - เชื่อม Microsoft Entra ID หรือ Google Workspace SSO เมื่อองค์กรพร้อม
+- ทดสอบ UI แบบ end-to-end ด้วยข้อมูลจริงของ USER, STAFF และ ADMIN บนอุปกรณ์หลายขนาด

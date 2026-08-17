@@ -21,6 +21,12 @@ async function seedAiSystemUser() {
   return aiSystemUser;
 }
 async function main() {
+  if (process.env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error(
+      "Seed นี้จะล้างข้อมูลเดิมทั้งหมด กรุณาตั้ง ALLOW_DESTRUCTIVE_SEED=true ก่อนรัน",
+    );
+  }
+
   console.log("🌱 เริ่ม seed ข้อมูล...");
 
   // ==========================================

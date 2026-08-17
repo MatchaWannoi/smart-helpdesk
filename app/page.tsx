@@ -24,9 +24,9 @@ export default async function Home() {
           <div className="bot-card">
             <svg viewBox="0 0 180 160" fill="none">
               <path d="M44 42h92a25 25 0 0 1 25 25v43a25 25 0 0 1-25 25H44a25 25 0 0 1-25-25V67a25 25 0 0 1 25-25Z" fill="white"/>
-              <path d="M55 61h70a22 22 0 0 1 22 22v15a22 22 0 0 1-22 22H55a22 22 0 0 1-22-22V83a22 22 0 0 1 22-22Z" fill="#0d3b80"/>
+              <path d="M55 61h70a22 22 0 0 1 22 22v15a22 22 0 0 1-22 22H55a22 22 0 0 1-22-22V83a22 22 0 0 1 22-22Z" fill="#4f378a"/>
               <circle cx="70" cy="90" r="8" fill="white"/><circle cx="110" cy="90" r="8" fill="white"/>
-              <path d="M90 26v16M19 76H8v28h11M161 76h11v28h-11" stroke="#1761dc" strokeWidth="9" strokeLinecap="round"/>
+              <path d="M90 26v16M19 76H8v28h11M161 76h11v28h-11" stroke="#6750a4" strokeWidth="9" strokeLinecap="round"/>
             </svg>
           </div>
         </div>

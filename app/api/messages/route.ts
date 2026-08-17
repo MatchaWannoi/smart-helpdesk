@@ -1,7 +1,7 @@
 import { SenderType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { AI_SYSTEM_USER_ID } from "@/lib/constants";
+import { AI_SYSTEM_USER_ID, MAX_MESSAGE_LENGTH } from "@/lib/constants";
 import { analyzeMessage } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 
@@ -51,6 +51,13 @@ export async function POST(request: Request) {
   }
 
   const trimmedContent = content.trim();
+
+  if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json(
+      { error: `ข้อความต้องไม่เกิน ${MAX_MESSAGE_LENGTH.toLocaleString()} ตัวอักษร` },
+      { status: 400 },
+    );
+  }
 
   // เรียก AI วิเคราะห์ก่อน เพื่อให้รู้ผล confident ก่อนตัดสินใจสร้าง ticket
   const aiResult = await analyzeMessage(trimmedContent);

@@ -94,91 +94,108 @@ export function UserManagement({ users }: { users: ManagedUser[] }) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,360px)_1fr]">
-      <section>
-        <h2 className="font-medium">สร้างบัญชีใหม่</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          ระบบจะสร้างรหัสผ่านชั่วคราวและบังคับให้ผู้ใช้เปลี่ยนเมื่อเข้าสู่ระบบครั้งแรก
-        </p>
-        <form onSubmit={createUser} className="mt-4 flex flex-col gap-3">
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="ชื่อ-นามสกุล"
-            required
-            minLength={2}
-            className="border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-          />
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="อีเมลองค์กร"
-            required
-            className="border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-          />
-          <select
-            value={role}
-            onChange={(event) => setRole(event.target.value as "USER" | "STAFF")}
-            className="border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-          >
-            <option value="USER">ผู้ใช้งานทั่วไป</option>
-            <option value="STAFF">เจ้าหน้าที่ IT Support</option>
-          </select>
-          {role === "STAFF" && (
+    <div className="user-management-grid">
+      <section className="managed-panel user-create-panel">
+        <div className="managed-panel-heading">
+          <span>NEW ACCOUNT</span>
+          <h2>สร้างบัญชีใหม่</h2>
+          <p>ระบบจะออกรหัสผ่านชั่วคราว และให้ผู้ใช้ตั้งรหัสผ่านส่วนตัวเมื่อเข้าสู่ระบบครั้งแรก</p>
+        </div>
+
+        <form onSubmit={createUser} className="managed-form">
+          <label>
+            ชื่อ-นามสกุล
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="เช่น สมชาย ใจดี"
+              required
+              minLength={2}
+            />
+          </label>
+          <label>
+            อีเมลองค์กร
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@company.com"
+              required
+            />
+          </label>
+          <label>
+            บทบาท
             <select
-              value={specialty}
-              onChange={(event) => setSpecialty(event.target.value as Category)}
-              className="border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              value={role}
+              onChange={(event) => setRole(event.target.value as "USER" | "STAFF")}
             >
-              {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
+              <option value="USER">ผู้ใช้งานทั่วไป</option>
+              <option value="STAFF">เจ้าหน้าที่ IT Support</option>
             </select>
+          </label>
+          {role === "STAFF" && (
+            <label>
+              ความเชี่ยวชาญ
+              <select
+                value={specialty}
+                onChange={(event) => setSpecialty(event.target.value as Category)}
+              >
+                {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
           )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {submitting ? "กำลังสร้าง..." : "สร้างบัญชี"}
+          <button type="submit" disabled={submitting} className="managed-primary">
+            {submitting ? "กำลังสร้าง..." : "+ สร้างบัญชี"}
           </button>
         </form>
 
         {notice && (
-          <div className="mt-4 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-            <p className="font-medium">คัดลอกข้อมูลนี้ก่อนปิดหน้าหรือทำรายการอื่น</p>
-            <p className="mt-2">อีเมล: <code>{notice.email}</code></p>
-            <p>รหัสผ่านชั่วคราว: <code className="font-bold">{notice.password}</code></p>
-            <p className="mt-2 text-xs">ระบบไม่เก็บรหัสผ่านนี้ในรูปแบบที่เปิดดูย้อนหลังได้</p>
+          <div className="credential-notice">
+            <p><strong>คัดลอกข้อมูลนี้ก่อนทำรายการอื่น</strong></p>
+            <p>อีเมล: <code>{notice.email}</code></p>
+            <p>รหัสผ่านชั่วคราว: <code><strong>{notice.password}</strong></code></p>
+            <p>ระบบไม่สามารถเปิดดูรหัสผ่านนี้ย้อนหลังได้</p>
           </div>
         )}
-        {error && <p className="mt-3 text-sm text-red-600" role="alert">{error}</p>}
+        {error && <p className="managed-error" role="alert">{error}</p>}
       </section>
 
-      <section className="min-w-0">
-        <h2 className="font-medium">บัญชีในระบบ</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-800">
-              <tr><th className="p-2">ผู้ใช้</th><th className="p-2">บทบาท</th><th className="p-2">สถานะ</th><th className="p-2">การดำเนินการ</th></tr>
+      <section className="managed-panel user-list-panel">
+        <div className="managed-panel-title-row">
+          <h2>บัญชีในระบบ</h2>
+          <span>{users.length} บัญชี</span>
+        </div>
+        <div className="managed-table-wrap">
+          <table className="managed-users-table">
+            <thead>
+              <tr><th>ผู้ใช้</th><th>บทบาท</th><th>สถานะ</th><th>การดำเนินการ</th></tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="p-2"><p className="font-medium">{user.name}</p><p className="text-xs text-zinc-500">{user.email}</p></td>
-                  <td className="p-2"><p>{user.role}</p>{user.specialty && <p className="text-xs text-zinc-500">{CATEGORY_LABEL[user.specialty]}</p>}</td>
-                  <td className="p-2">
-                    <span className={user.isActive ? "text-green-700" : "text-zinc-500"}>{user.isActive ? "ใช้งาน" : "ระงับ"}</span>
-                    {user.mustChangePassword && <p className="text-xs text-amber-700">รอเปลี่ยนรหัสผ่าน</p>}
+                <tr key={user.id}>
+                  <td>
+                    <div className="managed-user-cell">
+                      <span className="managed-user-avatar">{user.name.charAt(0).toUpperCase()}</span>
+                      <div><p>{user.name}</p><small>{user.email}</small></div>
+                    </div>
                   </td>
-                  <td className="p-2">
+                  <td>
+                    <span className={`role-pill role-${user.role.toLowerCase()}`}>{user.role}</span>
+                    {user.specialty && <small className="password-pending">{CATEGORY_LABEL[user.specialty]}</small>}
+                  </td>
+                  <td>
+                    <span className={`account-state${user.isActive ? "" : " inactive"}`}>{user.isActive ? "ใช้งาน" : "ระงับ"}</span>
+                    {user.mustChangePassword && <small className="password-pending">รอเปลี่ยนรหัสผ่าน</small>}
+                  </td>
+                  <td>
                     {user.role === "ADMIN" ? (
-                      <span className="text-xs text-zinc-500">จัดการผ่าน bootstrap</span>
+                      <span className="bootstrap-note">จัดการผ่าน bootstrap</span>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" disabled={busyId === user.id} onClick={() => void updateUser(user, "resetPassword")} className="border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-700">รีเซ็ตรหัสผ่าน</button>
-                        <button type="button" disabled={busyId === user.id} onClick={() => void updateUser(user, "setActive")} className="border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-700">{user.isActive ? "ระงับบัญชี" : "เปิดใช้งาน"}</button>
+                      <div className="managed-actions">
+                        <button type="button" disabled={busyId === user.id} onClick={() => void updateUser(user, "resetPassword")} className="managed-action">รีเซ็ตรหัสผ่าน</button>
+                        <button type="button" disabled={busyId === user.id} onClick={() => void updateUser(user, "setActive")} className={`managed-action${user.isActive ? " danger" : ""}`}>{user.isActive ? "ระงับบัญชี" : "เปิดใช้งาน"}</button>
                       </div>
                     )}
                   </td>
