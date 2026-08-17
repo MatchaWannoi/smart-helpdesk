@@ -61,12 +61,12 @@ export function UpdateTicketForm({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-xs font-medium text-zinc-500">สถานะ</label>
+    <div className="staff-update-form">
+      <label>สถานะ</label>
       <select
         value={status}
         onChange={(event) => setStatus(event.target.value as TicketStatus)}
-        className="w-fit border border-zinc-300 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-500 dark:border-zinc-700"
+        className="staff-status-select"
       >
         {STATUS_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
@@ -75,23 +75,23 @@ export function UpdateTicketForm({
         ))}
       </select>
 
-      <label className="mt-2 text-xs font-medium text-zinc-500">
+      <label>
         วิธีแก้ไข
       </label>
       <textarea
         value={resolutionNote}
         onChange={(event) => setResolutionNote(event.target.value)}
         rows={3}
-        className="border border-zinc-300 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-500 dark:border-zinc-700"
+        className="staff-resolution-textarea"
         placeholder="อธิบายวิธีแก้ไขปัญหา..."
       />
 
-      <div className="mt-1 flex flex-wrap items-center gap-2">
+      <div className="reply-actions">
         <button
           type="button"
           onClick={() => void handleSubmit()}
           disabled={submitting}
-          className="bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="reply-submit"
         >
           {submitting ? "กำลังบันทึก..." : "บันทึก"}
         </button>

@@ -26,12 +26,24 @@ export default async function AdminUsersPage() {
     orderBy: [{ role: "asc" }, { name: "asc" }],
   });
 
+  const activeUsers = users.filter((user) => user.isActive).length;
+  const staffUsers = users.filter((user) => user.role === Role.STAFF).length;
+
   return (
-    <main className="mx-auto w-full max-w-6xl overflow-y-auto px-4 py-8">
-      <h1 className="text-xl font-semibold">จัดการบัญชีผู้ใช้</h1>
-      <p className="mt-1 mb-6 text-sm text-zinc-500">
-        เฉพาะ Admin เท่านั้นที่สร้างบัญชีผู้ใช้และเจ้าหน้าที่ได้ บัญชี Admin เพิ่มเติมควรสร้างผ่านขั้นตอน bootstrap ที่ควบคุมโดยผู้ดูแลระบบ
-      </p>
+    <main className="admin-tool-page admin-users-page">
+      <div className="tool-heading">
+        <div>
+          <span>USER MANAGEMENT</span>
+          <h1>จัดการบัญชีผู้ใช้</h1>
+          <p>สร้างบัญชีใหม่ กำหนดบทบาท และควบคุมการเข้าใช้งานระบบ</p>
+        </div>
+      </div>
+
+      <section className="user-summary-grid" aria-label="ภาพรวมบัญชีผู้ใช้">
+        <article><span>บัญชีทั้งหมด</span><strong>{users.length}</strong><small>ไม่รวมบัญชีระบบ AI</small></article>
+        <article><span>กำลังใช้งาน</span><strong>{activeUsers}</strong><small>บัญชีที่เข้าสู่ระบบได้</small></article>
+        <article><span>เจ้าหน้าที่</span><strong>{staffUsers}</strong><small>ทีม IT Support</small></article>
+      </section>
       <UserManagement users={users} />
     </main>
   );

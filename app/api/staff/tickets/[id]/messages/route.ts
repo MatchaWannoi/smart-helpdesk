@@ -1,6 +1,7 @@
-import { Role, SenderType } from "@prisma/client";
+import { Role, SenderType, TicketStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
 import { getCurrentUserRole } from "@/lib/current-user-role";
 import { prisma } from "@/lib/prisma";
 
@@ -27,6 +28,13 @@ export async function POST(
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
+  if (ticket.status === TicketStatus.CLOSED) {
+    return NextResponse.json(
+      { error: "Ticket is closed and cannot receive new messages" },
+      { status: 409 },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -46,13 +54,22 @@ export async function POST(
     );
   }
 
+  const trimmedContent = content.trim();
+
+  if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json(
+      { error: `ข้อความต้องไม่เกิน ${MAX_MESSAGE_LENGTH.toLocaleString()} ตัวอักษร` },
+      { status: 400 },
+    );
+  }
+
   const message = await prisma.message.create({
     data: {
       ticketId: ticket.id,
       userId: ticket.userId,
       senderId: session.user.id,
       senderType: SenderType.STAFF,
-      content: content.trim(),
+      content: trimmedContent,
     },
   });
 

@@ -1,48 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smart Helpdesk with AI
 
-## AI answer mode
+Mini project ระบบแจ้งปัญหา IT และติดตามคำร้อง โดยมี AI ช่วยวิเคราะห์หมวดหมู่ ความเร่งด่วน และแนะนำวิธีแก้ไขเบื้องต้น หาก AI ไม่มั่นใจ ระบบจะสร้าง Ticket เพื่อส่งต่อให้เจ้าหน้าที่
 
-By default the AI answers directly from the model without querying the FAQ table.
-The FAQ data and Admin UI remain available. To switch back to FAQ-grounded
-answers, add this environment variable and restart the server:
+## ความสามารถหลัก
+
+- ผู้ใช้ (USER): แชทกับ AI, ดูและติดตาม Ticket, ตอบเจ้าหน้าที่ และประเมินผลหลังแก้ไข
+- เจ้าหน้าที่ (STAFF): ดูงานที่ได้รับมอบหมาย, ตอบผู้ใช้, อัปเดตสถานะ และบันทึกวิธีแก้ไข
+- ผู้ดูแลระบบ (ADMIN): จัดการผู้ใช้และ FAQ, มอบหมาย Ticket และดูรายงานภาพรวม
+- AI: วิเคราะห์หมวดหมู่ NETWORK, HARDWARE, SOFTWARE หรือ ACCOUNT พร้อมระดับความเร่งด่วน
+
+## เทคโนโลยี
+
+- Next.js 16 และ React 19
+- TypeScript และ Tailwind CSS 4
+- Auth.js / NextAuth แบบ Credentials
+- Prisma ORM และ PostgreSQL
+- Google Gemini
+
+## การติดตั้ง
+
+ต้องมี Node.js 20 ขึ้นไป, npm และฐานข้อมูล PostgreSQL
+
+1. ติดตั้ง dependencies
+
+   ```bash
+   npm install
+   ```
+
+2. คัดลอก `.env.example` เป็น `.env` แล้วใส่ค่าจริง
+
+   PowerShell:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+   macOS/Linux:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. สร้าง Prisma Client และตารางฐานข้อมูล
+
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+4. สร้างข้อมูลตัวอย่าง (คำสั่งนี้ล้างข้อมูลเดิมทั้งหมด)
+
+   PowerShell:
+
+   ```powershell
+   $env:ALLOW_DESTRUCTIVE_SEED="true"
+   npx prisma db seed
+   Remove-Item Env:ALLOW_DESTRUCTIVE_SEED
+   ```
+
+   macOS/Linux:
+
+   ```bash
+   ALLOW_DESTRUCTIVE_SEED=true npx prisma db seed
+   ```
+
+5. เปิด development server
+
+   ```bash
+   npm run dev
+   ```
+
+เปิด [http://localhost:3000](http://localhost:3000)
+
+## บัญชีทดลอง
+
+ข้อมูลเหล่านี้ถูกสร้างโดย `prisma/seed.ts` และใช้สำหรับการสาธิตเท่านั้น
+
+| บทบาท | อีเมล | รหัสผ่าน |
+| --- | --- | --- |
+| Admin | `admin@helpdesk.com` | `20042004` |
+| Staff | `staff.network@helpdesk.com` | `20042004` |
+| Staff | `staff.software@helpdesk.com` | `20042004` |
+| User | `user@helpdesk.com` | `20042004` |
+
+ห้ามใช้บัญชีหรือรหัสผ่านทดลองกับระบบจริง
+
+## โหมดการตอบของ AI
+
+ค่าเริ่มต้น `AI_USE_FAQ=false` จะให้ Gemini ตอบจากความรู้ของโมเดลโดยตรง หากต้องการให้คำตอบอ้างอิงข้อมูลในตาราง FAQ ให้ตั้งค่า:
 
 ```env
 AI_USE_FAQ=true
 ```
 
-Use `AI_USE_FAQ=false` or omit the variable to use direct-answer mode.
+จากนั้น restart development server
 
-## Getting Started
-
-First, run the development server:
+## คำสั่งที่ใช้บ่อย
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev       # เปิดระบบสำหรับพัฒนา
+npm run lint      # ตรวจโค้ดด้วย ESLint
+npm run build     # ตรวจและ build สำหรับ production
+npm run start     # เปิด production build
+npx prisma studio # เปิดหน้าจัดการข้อมูลของ Prisma
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## หมายเหตุด้านความปลอดภัย
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `.env` และ secret ต่าง ๆ ถูก Git ignore ห้ามนำค่าจริงขึ้น repository
+- เนื้อหาที่ผู้ใช้ส่งในหน้าแชทจะถูกส่งไปยัง Google Gemini เพื่อประมวลผล
+- Demo seed จะไม่ทำงานจนกว่าจะตั้ง `ALLOW_DESTRUCTIVE_SEED=true` เพราะสคริปต์จะล้างข้อมูลเดิมก่อนสร้างข้อมูลตัวอย่าง

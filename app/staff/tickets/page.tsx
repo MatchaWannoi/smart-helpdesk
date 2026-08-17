@@ -14,16 +14,11 @@ const STATUS_LABEL: Record<TicketStatus, string> = {
 };
 
 const STATUS_BADGE_CLASS: Record<TicketStatus, string> = {
-  [TicketStatus.OPEN]:
-    "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  [TicketStatus.ASSIGNED]:
-    "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
-  [TicketStatus.IN_PROGRESS]:
-    "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200",
-  [TicketStatus.RESOLVED]:
-    "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200",
-  [TicketStatus.CLOSED]:
-    "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  [TicketStatus.OPEN]: "status-open",
+  [TicketStatus.ASSIGNED]: "status-assigned",
+  [TicketStatus.IN_PROGRESS]: "status-in_progress",
+  [TicketStatus.RESOLVED]: "status-resolved",
+  [TicketStatus.CLOSED]: "status-closed",
 };
 
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -61,46 +56,68 @@ export default async function StaffTicketsPage() {
     },
   });
 
+  const inProgress = tickets.filter((ticket) => ticket.status === TicketStatus.IN_PROGRESS).length;
+  const waitingStatuses = new Set<TicketStatus>([
+    TicketStatus.OPEN,
+    TicketStatus.ASSIGNED,
+  ]);
+  const completedStatuses = new Set<TicketStatus>([
+    TicketStatus.RESOLVED,
+    TicketStatus.CLOSED,
+  ]);
+  const waiting = tickets.filter((ticket) => waitingStatuses.has(ticket.status)).length;
+  const completed = tickets.filter((ticket) => completedStatuses.has(ticket.status)).length;
+
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-          Ticket ที่ฉันดูแล
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <main className="portal-page ticket-list-page staff-portal">
+      <div className="portal-heading">
+        <div>
+          <span className="portal-kicker">STAFF WORKSPACE</span>
+          <h1>งานที่ฉันดูแล</h1>
+          <p>
           รายการ ticket ที่ถูกมอบหมายให้คุณดำเนินการ
-        </p>
+          </p>
+        </div>
+        <span className="staff-ready"><i /> พร้อมให้บริการ</span>
       </div>
 
+      <section className="ticket-overview" aria-label="ภาพรวมงาน">
+        <article><span>รอดำเนินการ</span><strong>{waiting}</strong><small>งานที่รับเข้ามาใหม่</small></article>
+        <article><span>กำลังแก้ไข</span><strong>{inProgress}</strong><small>งานที่กำลังดำเนินการ</small></article>
+        <article><span>เสร็จสิ้น</span><strong>{completed}</strong><small>งานที่ดูแลเรียบร้อย</small></article>
+      </section>
+
       {tickets.length === 0 ? (
-        <div className="border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          ยังไม่มี ticket ที่มอบหมายให้คุณ
+        <div className="portal-empty">
+          <span aria-hidden="true">✓</span>
+          <strong>ไม่มีงานค้างในขณะนี้</strong>
+          <p>คำร้องที่ได้รับมอบหมายใหม่จะแสดงที่หน้านี้</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="ticket-list">
           {tickets.map((ticket) => (
             <li key={ticket.id}>
               <Link
                 href={`/staff/tickets/${ticket.id}`}
-                className="block border border-zinc-200 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                className="ticket-list-card"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    <h2>
                       {ticket.title ?? "ไม่มีหัวข้อ"}
                     </h2>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p>
                       แจ้งโดย {ticket.user.name} ({ticket.user.email})
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[ticket.status]}`}
+                    className={`status-badge ${STATUS_BADGE_CLASS[ticket.status]}`}
                   >
                     {STATUS_LABEL[ticket.status]}
                   </span>
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                <div className="ticket-card-meta">
                   {ticket.category && (
                     <span>หมวดหมู่: {CATEGORY_LABEL[ticket.category]}</span>
                   )}

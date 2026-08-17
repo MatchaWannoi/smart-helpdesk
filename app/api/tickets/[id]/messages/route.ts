@@ -1,6 +1,7 @@
 import { SenderType, TicketStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
@@ -51,13 +52,22 @@ export async function POST(
     );
   }
 
+  const trimmedContent = content.trim();
+
+  if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json(
+      { error: `ข้อความต้องไม่เกิน ${MAX_MESSAGE_LENGTH.toLocaleString()} ตัวอักษร` },
+      { status: 400 },
+    );
+  }
+
   const message = await prisma.message.create({
     data: {
       ticketId: ticket.id,
       userId: session.user.id,
       senderId: session.user.id,
       senderType: SenderType.USER,
-      content: content.trim(),
+      content: trimmedContent,
     },
   });
 
