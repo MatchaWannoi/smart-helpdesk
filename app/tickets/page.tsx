@@ -20,6 +20,14 @@ const STATUS_BADGE_CLASS: Record<TicketStatus, string> = {
   [TicketStatus.CLOSED]: "status-closed",
 };
 
+const STATUS_ORDER: TicketStatus[] = [
+  TicketStatus.OPEN,
+  TicketStatus.ASSIGNED,
+  TicketStatus.IN_PROGRESS,
+  TicketStatus.RESOLVED,
+  TicketStatus.CLOSED,
+];
+
 const CATEGORY_LABEL: Record<Category, string> = {
   NETWORK: "เครือข่าย",
   HARDWARE: "ฮาร์ดแวร์",
@@ -41,12 +49,23 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-export default async function TicketsPage() {
+export default async function TicketsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
     redirect("/login");
   }
+
+  const requestedStatus = (await searchParams).status;
+  const selectedStatus = Object.values(TicketStatus).includes(
+    requestedStatus as TicketStatus,
+  )
+    ? (requestedStatus as TicketStatus)
+    : null;
 
   const tickets = await prisma.ticket.findMany({
     where: { userId: session.user.id },
@@ -68,6 +87,9 @@ export default async function TicketsPage() {
   ]);
   const activeTickets = tickets.filter((ticket) => activeStatuses.has(ticket.status)).length;
   const completedTickets = tickets.filter((ticket) => completedStatuses.has(ticket.status)).length;
+  const visibleTickets = selectedStatus
+    ? tickets.filter((ticket) => ticket.status === selectedStatus)
+    : tickets;
 
   return (
     <main className="portal-page ticket-list-page">
@@ -93,6 +115,30 @@ export default async function TicketsPage() {
         <article><span>ดำเนินการแล้ว</span><strong>{completedTickets}</strong><small>แก้ไขหรือปิดเคสแล้ว</small></article>
       </section>
 
+      <nav className="status-filter" aria-label="กรองคำร้องตามสถานะ">
+        <span className="status-filter-label">สถานะ</span>
+        <Link
+          href="/tickets"
+          className={!selectedStatus ? "is-active" : undefined}
+          aria-current={!selectedStatus ? "page" : undefined}
+        >
+          ทั้งหมด <b>{tickets.length}</b>
+        </Link>
+        {STATUS_ORDER.map((status) => {
+          const count = tickets.filter((ticket) => ticket.status === status).length;
+          return (
+            <Link
+              key={status}
+              href={`/tickets?status=${status}`}
+              className={selectedStatus === status ? "is-active" : undefined}
+              aria-current={selectedStatus === status ? "page" : undefined}
+            >
+              {STATUS_LABEL[status]} <b>{count}</b>
+            </Link>
+          );
+        })}
+      </nav>
+
       {tickets.length === 0 ? (
         <div className="portal-empty">
           <span aria-hidden="true">✓</span>
@@ -100,46 +146,54 @@ export default async function TicketsPage() {
           <p>เมื่อ AI ต้องส่งต่อปัญหาให้เจ้าหน้าที่ คำร้องจะปรากฏที่หน้านี้โดยอัตโนมัติ</p>
           <Link href="/chat">พูดคุยกับ AI</Link>
         </div>
+      ) : visibleTickets.length === 0 ? (
+        <div className="portal-empty portal-empty-filtered">
+          <span aria-hidden="true">⌕</span>
+          <strong>ไม่พบคำร้องในสถานะที่เลือก</strong>
+          <p>ลองเลือกสถานะอื่น หรือดูคำร้องทั้งหมด</p>
+          <Link href="/tickets">ดูคำร้องทั้งหมด</Link>
+        </div>
       ) : (
-        <ul className="ticket-list">
-          {tickets.map((ticket) => (
-            <li key={ticket.id}>
+        <section className="ticket-results">
+          <ul className="ticket-list">
+            {visibleTickets.map((ticket) => (
+              <li key={ticket.id}>
               <Link
                 href={`/tickets/${ticket.id}`}
-                className="ticket-list-card"
+                className={`ticket-list-card status-card-${ticket.status.toLowerCase()}`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2>
+                <div className="ticket-card-main">
+                  <div className="ticket-card-title-row">
+                    <h3>
                       {ticket.title ?? "ไม่มีหัวข้อ"}
-                    </h2>
-                    <p>
-                      สร้างเมื่อ {formatDate(ticket.createdAt)}
-                    </p>
+                    </h3>
+                    <span className={`status-badge ${STATUS_BADGE_CLASS[ticket.status]}`}>
+                      {STATUS_LABEL[ticket.status]}
+                    </span>
                   </div>
-                  <span
-                    className={`status-badge ${STATUS_BADGE_CLASS[ticket.status]}`}
-                  >
-                    {STATUS_LABEL[ticket.status]}
-                  </span>
+                  <p>สร้างเมื่อ {formatDate(ticket.createdAt)}</p>
                 </div>
 
                 <div className="ticket-card-meta">
                   {ticket.category && (
-                    <span>หมวดหมู่: {CATEGORY_LABEL[ticket.category]}</span>
+                    <span className="meta-category">หมวดหมู่: {CATEGORY_LABEL[ticket.category]}</span>
                   )}
                   {ticket.urgency && (
-                    <span>ความเร่งด่วน: {URGENCY_LABEL[ticket.urgency]}</span>
+                    <span className={`meta-urgency urgency-${ticket.urgency.toLowerCase()}`}>ความเร่งด่วน: {URGENCY_LABEL[ticket.urgency]}</span>
                   )}
-                  <span>ข้อความ: {ticket._count.messages}</span>
-                  <span>
+                  <span className="meta-messages">ข้อความ: {ticket._count.messages}</span>
+                  <span className="meta-assignee">
                     เจ้าหน้าที่: {ticket.assignedStaff?.name ?? "ยังไม่ได้มอบหมาย"}
                   </span>
                 </div>
+                <span className="ticket-card-action">
+                  ดูรายละเอียด <b aria-hidden="true">→</b>
+                </span>
               </Link>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </main>
   );
