@@ -21,6 +21,14 @@ const STATUS_BADGE_CLASS: Record<TicketStatus, string> = {
   [TicketStatus.CLOSED]: "status-closed",
 };
 
+const STATUS_ORDER: TicketStatus[] = [
+  TicketStatus.OPEN,
+  TicketStatus.ASSIGNED,
+  TicketStatus.IN_PROGRESS,
+  TicketStatus.RESOLVED,
+  TicketStatus.CLOSED,
+];
+
 const CATEGORY_LABEL: Record<Category, string> = {
   NETWORK: "เครือข่าย",
   HARDWARE: "ฮาร์ดแวร์",
@@ -34,7 +42,11 @@ const URGENCY_LABEL: Record<Urgency, string> = {
   HIGH: "สูง",
 };
 
-export default async function StaffTicketsPage() {
+export default async function StaffTicketsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -46,6 +58,13 @@ export default async function StaffTicketsPage() {
   if (role !== Role.STAFF) {
     redirect("/chat");
   }
+
+  const requestedStatus = (await searchParams).status;
+  const selectedStatus = Object.values(TicketStatus).includes(
+    requestedStatus as TicketStatus,
+  )
+    ? (requestedStatus as TicketStatus)
+    : null;
 
   const tickets = await prisma.ticket.findMany({
     where: { assignedStaffId: session.user.id },
@@ -67,6 +86,9 @@ export default async function StaffTicketsPage() {
   ]);
   const waiting = tickets.filter((ticket) => waitingStatuses.has(ticket.status)).length;
   const completed = tickets.filter((ticket) => completedStatuses.has(ticket.status)).length;
+  const visibleTickets = selectedStatus
+    ? tickets.filter((ticket) => ticket.status === selectedStatus)
+    : tickets;
 
   return (
     <main className="portal-page ticket-list-page staff-portal">
@@ -87,49 +109,81 @@ export default async function StaffTicketsPage() {
         <article><span>เสร็จสิ้น</span><strong>{completed}</strong><small>งานที่ดูแลเรียบร้อย</small></article>
       </section>
 
+      <nav className="status-filter" aria-label="กรองงานตามสถานะ">
+        <span className="status-filter-label">สถานะ</span>
+        <Link
+          href="/staff/tickets"
+          className={!selectedStatus ? "is-active" : undefined}
+          aria-current={!selectedStatus ? "page" : undefined}
+        >
+          ทั้งหมด <b>{tickets.length}</b>
+        </Link>
+        {STATUS_ORDER.map((status) => {
+          const count = tickets.filter((ticket) => ticket.status === status).length;
+          return (
+            <Link
+              key={status}
+              href={`/staff/tickets?status=${status}`}
+              className={selectedStatus === status ? "is-active" : undefined}
+              aria-current={selectedStatus === status ? "page" : undefined}
+            >
+              {STATUS_LABEL[status]} <b>{count}</b>
+            </Link>
+          );
+        })}
+      </nav>
+
       {tickets.length === 0 ? (
         <div className="portal-empty">
           <span aria-hidden="true">✓</span>
           <strong>ไม่มีงานค้างในขณะนี้</strong>
           <p>คำร้องที่ได้รับมอบหมายใหม่จะแสดงที่หน้านี้</p>
         </div>
+      ) : visibleTickets.length === 0 ? (
+        <div className="portal-empty portal-empty-filtered">
+          <span aria-hidden="true">⌕</span>
+          <strong>ไม่พบงานในสถานะที่เลือก</strong>
+          <p>ลองเลือกสถานะอื่น หรือดูงานทั้งหมด</p>
+          <Link href="/staff/tickets">ดูงานทั้งหมด</Link>
+        </div>
       ) : (
-        <ul className="ticket-list">
-          {tickets.map((ticket) => (
-            <li key={ticket.id}>
+        <section className="ticket-results">
+          <ul className="ticket-list">
+            {visibleTickets.map((ticket) => (
+              <li key={ticket.id}>
               <Link
                 href={`/staff/tickets/${ticket.id}`}
-                className="ticket-list-card"
+                className={`ticket-list-card status-card-${ticket.status.toLowerCase()}`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2>
+                <div className="ticket-card-main">
+                  <div className="ticket-card-title-row">
+                    <h3>
                       {ticket.title ?? "ไม่มีหัวข้อ"}
-                    </h2>
-                    <p>
-                      แจ้งโดย {ticket.user.name} ({ticket.user.email})
-                    </p>
+                    </h3>
+                    <span className={`status-badge ${STATUS_BADGE_CLASS[ticket.status]}`}>
+                      {STATUS_LABEL[ticket.status]}
+                    </span>
                   </div>
-                  <span
-                    className={`status-badge ${STATUS_BADGE_CLASS[ticket.status]}`}
-                  >
-                    {STATUS_LABEL[ticket.status]}
-                  </span>
+                  <p>แจ้งโดย {ticket.user.name} ({ticket.user.email})</p>
                 </div>
 
                 <div className="ticket-card-meta">
                   {ticket.category && (
-                    <span>หมวดหมู่: {CATEGORY_LABEL[ticket.category]}</span>
+                    <span className="meta-category">หมวดหมู่: {CATEGORY_LABEL[ticket.category]}</span>
                   )}
                   {ticket.urgency && (
-                    <span>ความเร่งด่วน: {URGENCY_LABEL[ticket.urgency]}</span>
+                    <span className={`meta-urgency urgency-${ticket.urgency.toLowerCase()}`}>ความเร่งด่วน: {URGENCY_LABEL[ticket.urgency]}</span>
                   )}
-                  <span>ข้อความ: {ticket._count.messages}</span>
+                  <span className="meta-messages">ข้อความ: {ticket._count.messages}</span>
                 </div>
+                <span className="ticket-card-action">
+                  เปิดงาน <b aria-hidden="true">→</b>
+                </span>
               </Link>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </main>
   );

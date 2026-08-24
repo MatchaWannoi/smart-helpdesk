@@ -133,7 +133,7 @@ export default async function AdminTicketsPage({
           {tickets.map((ticket) => (
             <li
               key={ticket.id}
-              className={`admin-ticket-card ${LOCKED_STATUSES.has(ticket.status) ? "is-locked" : ""}`}
+              className={`admin-ticket-card status-card-${ticket.status.toLowerCase()} ${LOCKED_STATUSES.has(ticket.status) ? "is-locked" : ""}`}
             >
               <div className="ticket-card-head">
                 <div>
