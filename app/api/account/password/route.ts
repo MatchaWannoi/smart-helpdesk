@@ -2,10 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-function isStrongEnough(password: string) {
-  return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
-}
+import { isStrongPassword } from "@/lib/validation";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -30,7 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "กรุณากรอกรหัสผ่านให้ครบ" }, { status: 400 });
   }
 
-  if (!isStrongEnough(newPassword)) {
+  if (!isStrongPassword(newPassword)) {
     return NextResponse.json(
       { error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรกับตัวเลข" },
       { status: 400 },

@@ -1,6 +1,10 @@
 # Smart Helpdesk with AI
 
+[![CI](https://github.com/MatchaWannoi/smart-helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/MatchaWannoi/smart-helpdesk/actions/workflows/ci.yml)
+
 Mini project ระบบแจ้งปัญหา IT และติดตามคำร้อง โดยมี AI ช่วยวิเคราะห์หมวดหมู่ ความเร่งด่วน และแนะนำวิธีแก้ไขเบื้องต้น หาก AI ไม่มั่นใจ ระบบจะสร้าง Ticket เพื่อส่งต่อให้เจ้าหน้าที่
+
+โปรเจกต์นี้สาธิต workflow ของระบบ Helpdesk ตั้งแต่รับแจ้งปัญหา คัดแยกด้วย AI ส่งต่อเจ้าหน้าที่ ติดตามสถานะ ไปจนถึงการประเมินผลหลังปิดงาน โดยแบ่งสิทธิ์การใช้งานตามบทบาทอย่างชัดเจน
 
 ## ความสามารถหลัก
 
@@ -9,6 +13,21 @@ Mini project ระบบแจ้งปัญหา IT และติดตา
 - ผู้ดูแลระบบ (ADMIN): จัดการผู้ใช้และ FAQ, มอบหมาย Ticket และดูรายงานภาพรวม
 - AI: วิเคราะห์หมวดหมู่ NETWORK, HARDWARE, SOFTWARE หรือ ACCOUNT พร้อมระดับความเร่งด่วน
 
+## Workflow ของระบบ
+
+```mermaid
+flowchart LR
+    U[User แจ้งปัญหา] --> AI[Gemini วิเคราะห์ปัญหา]
+    AI -->|แนะนำวิธีแก้| U
+    AI -->|ต้องส่งต่อ| T[สร้าง Ticket]
+    T --> A[Admin มอบหมายงาน]
+    A --> S[Staff ดำเนินการ]
+    S --> R[แก้ไขและบันทึก Resolution]
+    R --> E[User ประเมินผล]
+```
+
+ระบบใช้การตรวจสิทธิ์สองระดับ: Proxy ป้องกันหน้าตามบทบาท และ API ตรวจ session, role รวมถึง ownership ของข้อมูลซ้ำอีกครั้งก่อนอ่านหรือแก้ไขข้อมูล
+
 ## เทคโนโลยี
 
 - Next.js 16 และ React 19
@@ -16,6 +35,24 @@ Mini project ระบบแจ้งปัญหา IT และติดตา
 - Auth.js / NextAuth แบบ Credentials
 - Prisma ORM และ PostgreSQL
 - Google Gemini
+
+## โครงสร้างโปรเจกต์
+
+```text
+app/                 หน้าเว็บและ API routes ตาม Next.js App Router
+  admin/             หน้าจัดการผู้ใช้ FAQ Ticket และรายงาน
+  staff/             หน้ารับงานและอัปเดต Ticket สำหรับเจ้าหน้าที่
+  tickets/           หน้าติดตาม Ticket สำหรับผู้ใช้
+  api/               API แยกตามขอบเขตสิทธิ์และทรัพยากร
+components/          UI component ที่นำกลับมาใช้ซ้ำ
+hooks/               Client-side hooks สำหรับระบบแชท
+lib/                 Prisma, Gemini และ helper ส่วนกลาง
+prisma/              Database schema และ demo seed
+proxy.ts             Route protection และ role-based access control
+auth.ts              การตั้งค่า Auth.js และ Credentials provider
+```
+
+รายละเอียด data model, routes และ process ทั้งหมดอยู่ใน [Project Summary](./smart-helpdesk-project-summary.md)
 
 ## การติดตั้ง
 
@@ -78,10 +115,10 @@ Mini project ระบบแจ้งปัญหา IT และติดตา
 
 | บทบาท | อีเมล | รหัสผ่าน |
 | --- | --- | --- |
-| Admin | `admin@helpdesk.com` | `20042004` |
-| Staff | `staff.network@helpdesk.com` | `20042004` |
-| Staff | `staff.software@helpdesk.com` | `20042004` |
-| User | `user@helpdesk.com` | `20042004` |
+| Admin | `admin@helpdesk.com` | `Demo1234!` |
+| Staff | `staff.network@helpdesk.com` | `Demo1234!` |
+| Staff | `staff.software@helpdesk.com` | `Demo1234!` |
+| User | `user@helpdesk.com` | `Demo1234!` |
 
 ห้ามใช้บัญชีหรือรหัสผ่านทดลองกับระบบจริง
 
@@ -100,13 +137,31 @@ AI_USE_FAQ=true
 ```bash
 npm run dev       # เปิดระบบสำหรับพัฒนา
 npm run lint      # ตรวจโค้ดด้วย ESLint
+npm test          # รัน unit tests
 npm run build     # ตรวจและ build สำหรับ production
 npm run start     # เปิด production build
 npx prisma studio # เปิดหน้าจัดการข้อมูลของ Prisma
 ```
+
+## การตรวจคุณภาพ
+
+ทุก push และ pull request จะรัน GitHub Actions จาก `.github/workflows/ci.yml` เพื่อตรวจสามขั้นตอน:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+ก่อนเปิด pull request ควรรันทั้งสามคำสั่งในเครื่องให้ผ่าน โดย production build จะตรวจ TypeScript และความถูกต้องของทุก route ไปพร้อมกัน
 
 ## หมายเหตุด้านความปลอดภัย
 
 - `.env` และ secret ต่าง ๆ ถูก Git ignore ห้ามนำค่าจริงขึ้น repository
 - เนื้อหาที่ผู้ใช้ส่งในหน้าแชทจะถูกส่งไปยัง Google Gemini เพื่อประมวลผล
 - Demo seed จะไม่ทำงานจนกว่าจะตั้ง `ALLOW_DESTRUCTIVE_SEED=true` เพราะสคริปต์จะล้างข้อมูลเดิมก่อนสร้างข้อมูลตัวอย่าง
+- บัญชีและรหัสผ่านในหัวข้อบัญชีทดลองเป็นข้อมูลสาธิตที่เปิดเผยต่อสาธารณะ ห้ามนำไปใช้กับระบบจริง
+
+## License
+
+โปรเจกต์นี้เผยแพร่ภายใต้ [MIT License](./LICENSE)
