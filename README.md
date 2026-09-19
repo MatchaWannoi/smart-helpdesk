@@ -71,7 +71,6 @@ OPEN → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED
 - การแจ้งเตือนผ่านอีเมล LINE หรือ Push Notification
 - การอัปเดตข้อความแบบ WebSocket/SSE โดยปัจจุบันหน้าแชทตรวจข้อความใหม่เป็นช่วงเวลา
 - Single Sign-On (SSO) แม้โครงสร้างข้อมูลจะเตรียมรองรับ metadata บางส่วนไว้แล้ว
-- ชุด Automated tests สำหรับตรวจสอบระบบแบบอัตโนมัติ
 - การตั้งค่า Deployment, Monitoring, Backup และ Production hardening แบบครบวงจร
 
 ## Tech Stack
@@ -97,41 +96,26 @@ app/                 Pages, layouts และ Route Handlers ของ Next.js
   tickets/           รายการและรายละเอียด Ticket สำหรับ USER
 components/          UI components ที่ใช้ร่วมกัน
 hooks/               Client hooks เช่น การโหลดและส่งข้อความในแชท
-lib/                 Prisma client, Gemini integration และค่าคงที่
+lib/                 Prisma client, Gemini integration, validation และค่าคงที่
 prisma/
   schema.prisma      โครงสร้างฐานข้อมูล
   seed.ts            ข้อมูลตัวอย่างสำหรับการสาธิต
 public/              Static assets
+tests/               Automated tests สำหรับ validation logic
 auth.ts              การตั้งค่า Auth.js และ Credentials authentication
 proxy.ts             การป้องกันเส้นทางและควบคุมสิทธิ์ตามบทบาท
 ```
 
-## โครงสร้างโปรเจกต์
-
-```text
-app/                 หน้าเว็บและ API routes ตาม Next.js App Router
-  admin/             หน้าจัดการผู้ใช้ FAQ Ticket และรายงาน
-  staff/             หน้ารับงานและอัปเดต Ticket สำหรับเจ้าหน้าที่
-  tickets/           หน้าติดตาม Ticket สำหรับผู้ใช้
-  api/               API แยกตามขอบเขตสิทธิ์และทรัพยากร
-components/          UI component ที่นำกลับมาใช้ซ้ำ
-hooks/               Client-side hooks สำหรับระบบแชท
-lib/                 Prisma, Gemini และ helper ส่วนกลาง
-prisma/              Database schema และ demo seed
-proxy.ts             Route protection และ role-based access control
-auth.ts              การตั้งค่า Auth.js และ Credentials provider
-```
-
-รายละเอียด data model, routes และ process ทั้งหมดอยู่ใน [Project Summary](./smart-helpdesk-project-summary.md)
+รายละเอียดเพิ่มเติมเกี่ยวกับ data model, routes และ process อยู่ใน [Project Summary](./smart-helpdesk-project-summary.md)
 
 ## การติดตั้ง
 
 สิ่งที่ต้องมี:
 
-- Node.js 20 ขึ้นไป
+- Node.js 20.9.0 ขึ้นไป
 - npm
 - PostgreSQL database
-- Google Gemini API key
+- Google Gemini API key สำหรับใช้งาน AI (หากไม่กำหนด ระบบจะตอบด้วย fallback response และสร้าง Ticket)
 
 1. Clone repository และเข้าไปยังไดเรกทอรีของโปรเจกต์
 
@@ -240,22 +224,28 @@ ALLOW_DESTRUCTIVE_SEED=true npx prisma db seed
 
 ## การตรวจสอบโปรเจกต์
 
-ปัจจุบัน repository ยังไม่มี Automated test suite สามารถตรวจสอบคุณภาพโค้ดและ Production build ได้ด้วยคำสั่ง:
+ปัจจุบันโปรเจกต์มี Automated tests จำนวน 4 tests ครอบคลุมนโยบายรหัสผ่านและการตรวจสอบคะแนนประเมิน สามารถตรวจสอบโปรเจกต์ได้ด้วยคำสั่ง:
 
 ```bash
+npm test
 npm run lint
 npm run build
+npx prisma validate
 ```
 
-คำสั่ง `npm run build` ต้องเข้าถึงฐานข้อมูลและ Environment Variables ที่จำเป็นได้ในระหว่างการ build
+Automated tests ปัจจุบันยังไม่ครอบคลุม Authentication, Authorization, API routes, Database integration, Gemini integration และพฤติกรรมของ UI ในระดับ browser
+
+คำสั่ง `npm run build` และ `npx prisma validate` ต้องเข้าถึง Environment Variables ที่จำเป็น โดยขั้นตอน build บางส่วนอาจต้องเชื่อมต่อฐานข้อมูลตามลักษณะของหน้าในโปรเจกต์
 
 ## คำสั่งที่ใช้บ่อย
 
 ```bash
 npm run dev        # เปิด development server
+npm test           # รัน Automated tests
 npm run lint       # ตรวจโค้ดด้วย ESLint
 npm run build      # สร้าง production build
 npm run start      # เปิด production server จาก build ที่สร้างแล้ว
+npx prisma validate # ตรวจสอบ Prisma schema
 npx prisma studio  # เปิดหน้าจัดการข้อมูลของ Prisma
 ```
 
@@ -264,12 +254,14 @@ npx prisma studio  # เปิดหน้าจัดการข้อมู�
 - ระบบออกแบบเป็น Mini Project และยังไม่ได้ผ่านการทดสอบสำหรับปริมาณผู้ใช้ระดับ Production
 - หน้าแชทใช้ polling ทุก 4 วินาที ไม่ใช่การสื่อสารแบบ real-time เต็มรูปแบบ
 - การจำแนกหมวดหมู่ ความเร่งด่วน และคำแนะนำขึ้นอยู่กับผลลัพธ์จากโมเดล AI ซึ่งอาจคลาดเคลื่อนได้
+- Automated tests ปัจจุบันครอบคลุมเฉพาะ validation logic บางส่วนเท่านั้น
 - ระบบยังไม่มี file storage, notification service, audit log, rate limiting และ background job queue
 - การ deploy จริงต้องจัดเตรียม HTTPS, managed database, secret management, logging, monitoring และ backup เพิ่มเติม
 
 ## Security / Privacy
 
 - รหัสผ่านจัดเก็บด้วย bcrypt และไม่เก็บเป็น plain text
+- รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร และประกอบด้วยตัวอักษรกับตัวเลข
 - Session ใช้ JWT ผ่าน Auth.js
 - หน้าและ API ที่สำคัญตรวจสอบการเข้าสู่ระบบ ความเป็นเจ้าของข้อมูล และบทบาทของผู้ใช้
 - บัญชีที่ถูกระงับจะไม่สามารถเข้าสู่ระบบได้ และสถานะบัญชีจะถูกตรวจซ้ำสำหรับ session ที่มีอยู่
