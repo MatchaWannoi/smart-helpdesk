@@ -43,7 +43,7 @@ async function main() {
   // 2. สร้าง User (3 บทบาท)
   // ==========================================
   // hash password ด้วย bcrypt ก่อนเก็บ ห้ามเก็บ plain text เด็ดขาด
-  const hashedPassword = await bcrypt.hash("20042004", 10);
+  const hashedPassword = await bcrypt.hash("Demo1234!", 10);
 
   const admin = await prisma.user.create({
     data: {
@@ -213,7 +213,7 @@ async function main() {
 
   console.log("✅ สร้าง Message ตัวอย่างแล้ว");
   console.log("🎉 Seed ข้อมูลเสร็จสมบูรณ์!");
-  console.log("\n📌 บัญชีทดสอบ (password ทุกคนคือ: 20042004)");
+  console.log("\n📌 บัญชีทดสอบ (password ทุกคนคือ: Demo1234!)");
   console.log("   Admin:  admin@helpdesk.com");
   console.log("   Staff:  staff.network@helpdesk.com / staff.software@helpdesk.com");
   console.log("   User:   user@helpdesk.com");

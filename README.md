@@ -106,6 +106,24 @@ auth.ts              การตั้งค่า Auth.js และ Credential
 proxy.ts             การป้องกันเส้นทางและควบคุมสิทธิ์ตามบทบาท
 ```
 
+## โครงสร้างโปรเจกต์
+
+```text
+app/                 หน้าเว็บและ API routes ตาม Next.js App Router
+  admin/             หน้าจัดการผู้ใช้ FAQ Ticket และรายงาน
+  staff/             หน้ารับงานและอัปเดต Ticket สำหรับเจ้าหน้าที่
+  tickets/           หน้าติดตาม Ticket สำหรับผู้ใช้
+  api/               API แยกตามขอบเขตสิทธิ์และทรัพยากร
+components/          UI component ที่นำกลับมาใช้ซ้ำ
+hooks/               Client-side hooks สำหรับระบบแชท
+lib/                 Prisma, Gemini และ helper ส่วนกลาง
+prisma/              Database schema และ demo seed
+proxy.ts             Route protection และ role-based access control
+auth.ts              การตั้งค่า Auth.js และ Credentials provider
+```
+
+รายละเอียด data model, routes และ process ทั้งหมดอยู่ใน [Project Summary](./smart-helpdesk-project-summary.md)
+
 ## การติดตั้ง
 
 สิ่งที่ต้องมี:

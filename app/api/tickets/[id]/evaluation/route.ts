@@ -2,6 +2,7 @@ import { TicketStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeRating } from "@/lib/validation";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -18,9 +19,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     await prisma.ticket.update({ where: { id }, data: { status: TicketStatus.IN_PROGRESS, closedAt: null } });
     return NextResponse.json({ status: TicketStatus.IN_PROGRESS });
   }
-  const rating = typeof body?.rating === "number" ? Math.round(body.rating) : 0;
+  const rating = normalizeRating(body?.rating);
   const comment = typeof body?.comment === "string" ? body.comment.trim() : "";
-  if (rating < 1 || rating > 5) return NextResponse.json({ error: "กรุณาให้คะแนน 1–5 ดาว" }, { status: 400 });
+  if (rating === null) return NextResponse.json({ error: "กรุณาให้คะแนน 1–5 ดาว" }, { status: 400 });
   await prisma.$transaction([
     prisma.evaluation.upsert({
       where: { ticketId: id },
