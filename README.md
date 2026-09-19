@@ -215,10 +215,10 @@ ALLOW_DESTRUCTIVE_SEED=true npx prisma db seed
 
 | บทบาท | อีเมล | รหัสผ่าน |
 | --- | --- | --- |
-| ADMIN | `admin@helpdesk.com` | `20042004` |
-| STAFF | `staff.network@helpdesk.com` | `20042004` |
-| STAFF | `staff.software@helpdesk.com` | `20042004` |
-| USER | `user@helpdesk.com` | `20042004` |
+| ADMIN | `admin@helpdesk.com` | `Demo1234!` |
+| STAFF | `staff.network@helpdesk.com` | `Demo1234!` |
+| STAFF | `staff.software@helpdesk.com` | `Demo1234!` |
+| USER | `user@helpdesk.com` | `Demo1234!` |
 
 บัญชีและรหัสผ่านเหล่านี้ใช้สำหรับ Local demo เท่านั้น ห้ามใช้กับระบบจริง
 
