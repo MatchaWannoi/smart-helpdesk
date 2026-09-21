@@ -1,21 +1,11 @@
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { AI_SYSTEM_USER_ID } from "@/lib/constants";
 import { getCurrentUserRole } from "@/lib/current-user-role";
+import { getManagedUserInitialPassword } from "@/lib/managed-user-password";
 import { prisma } from "@/lib/prisma";
-
-const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-
-function generateTemporaryPassword(length = 12) {
-  const bytes = crypto.randomBytes(length);
-  const chars = Array.from(bytes, (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length]);
-  chars[0] = "A";
-  chars[1] = "7";
-  return chars.join("");
-}
 
 export async function PATCH(
   request: Request,
@@ -49,7 +39,7 @@ export async function PATCH(
 
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, role: true, isActive: true },
+    select: { id: true, email: true, role: true, isActive: true },
   });
   if (!target) {
     return NextResponse.json({ error: "ไม่พบบัญชี" }, { status: 404 });
@@ -87,7 +77,9 @@ export async function PATCH(
       );
     }
 
-    const temporaryPassword = generateTemporaryPassword();
+    // ใช้กติกาเดียวกับตอน Admin สร้างบัญชีครั้งแรก:
+    // ข้อความก่อน @ ของอีเมล และบังคับเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ
+    const temporaryPassword = getManagedUserInitialPassword(target.email);
     await prisma.user.update({
       where: { id },
       data: {
@@ -101,4 +93,58 @@ export async function PATCH(
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if ((await getCurrentUserRole(session.user.id)) !== Role.ADMIN) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  if (id === AI_SYSTEM_USER_ID || id === session.user.id) {
+    return NextResponse.json({ error: "ไม่สามารถลบบัญชีนี้ได้" }, { status: 400 });
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      role: true,
+      _count: {
+        select: {
+          ticketsCreated: true,
+          ticketsAssigned: true,
+          ownedThreadMessages: true,
+          sentMessages: true,
+          evaluations: true,
+        },
+      },
+    },
+  });
+
+  if (!target) {
+    return NextResponse.json({ error: "ไม่พบบัญชี" }, { status: 404 });
+  }
+  if (target.role === Role.ADMIN) {
+    return NextResponse.json({ error: "ไม่สามารถลบบัญชีผู้ดูแลระบบได้" }, { status: 400 });
+  }
+
+  const hasHistory = Object.values(target._count).some((count) => count > 0);
+  if (hasHistory) {
+    return NextResponse.json(
+      { error: "บัญชีนี้มีประวัติคำร้องหรือข้อความ กรุณาระงับบัญชีแทนการลบ" },
+      { status: 409 },
+    );
+  }
+
+  await prisma.user.delete({ where: { id } });
+  return NextResponse.json({ deleted: true });
 }

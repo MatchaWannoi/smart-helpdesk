@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getCurrentUserRole } from "@/lib/current-user-role";
 import { prisma } from "@/lib/prisma";
 import { AssignStaffForm } from "./AssignStaffForm";
+import { ResolutionTime } from "@/components/tickets/ResolutionTime";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: "รอมอบหมาย",
@@ -162,6 +163,14 @@ export default async function AdminTicketsPage({
                 )}
                 <div><span>เจ้าหน้าที่</span><strong>{ticket.assignedStaff?.name ?? "ยังไม่ได้มอบหมาย"}</strong></div>
                 <div><span>ข้อความ</span><strong>{ticket._count.messages} ข้อความ</strong></div>
+                <div>
+                  <span>ระยะเวลาดำเนินการ</span>
+                  <ResolutionTime
+                    startedAt={ticket.createdAt.toISOString()}
+                    endedAt={ticket.closedAt?.toISOString()}
+                    compact
+                  />
+                </div>
               </div>
 
               <div className="ticket-assignment">

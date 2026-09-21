@@ -1,43 +1,65 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  confirmTicketMessage,
+  removePendingTicketMessage,
+  showPendingTicketMessage,
+} from "@/components/tickets/TicketMessageThread";
+import type { ChatMessage } from "@/hooks/useChatMessages";
 import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
 
-export function StaffReplyForm({ ticketId }: { ticketId: string }) {
-  const router = useRouter();
+export function StaffReplyForm({
+  ticketId,
+  disabled = false,
+}: {
+  ticketId: string;
+  disabled?: boolean;
+}) {
   const [content, setContent] = useState("");
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   async function handleSend() {
     const trimmed = content.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed || sending || disabled) return;
 
-    setSending(true);
     setError(null);
+    setSending(true);
+    const temporaryId = showPendingTicketMessage(ticketId, trimmed, "STAFF");
 
     try {
       const response = await fetch(`/api/staff/tickets/${ticketId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Skip-Global-Activity": "true" },
         body: JSON.stringify({ content: trimmed }),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; message?: ChatMessage };
 
       if (!response.ok) {
         throw new Error(data.error ?? "ส่งข้อความไม่สำเร็จ");
       }
 
+      if (!data.message) throw new Error("ไม่พบข้อมูลข้อความที่ส่ง");
+
       setContent("");
-      router.refresh();
+      confirmTicketMessage(ticketId, temporaryId, data.message);
     } catch (cause) {
+      removePendingTicketMessage(ticketId, temporaryId);
       setError(
         cause instanceof Error ? cause.message : "ส่งข้อความไม่สำเร็จ",
       );
     } finally {
       setSending(false);
     }
+  }
+
+  if (disabled) {
+    return (
+      <p className="ticket-closed-note">
+        Ticket นี้ปิดแล้ว จึงไม่สามารถส่งข้อความเพิ่มเติมได้
+      </p>
+    );
   }
 
   return (

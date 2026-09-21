@@ -8,6 +8,7 @@ type StoredAiMeta = {
   urgency?: Urgency;
   confident?: boolean;
   suggestedFaqId?: string | null;
+  startedAt?: string;
 };
 
 function getAiMeta(value: unknown): StoredAiMeta | null {
@@ -64,6 +65,10 @@ export async function POST(
   }
 
   const aiMeta = getAiMeta(aiMessage.aiMeta);
+  const recordedStart = aiMeta?.startedAt ? new Date(aiMeta.startedAt) : null;
+  const issueStartedAt = recordedStart && !Number.isNaN(recordedStart.getTime())
+    ? recordedStart
+    : userMessage.createdAt;
 
   const result = await prisma.$transaction(async (tx) => {
     const ticket = await tx.ticket.create({
@@ -73,6 +78,7 @@ export async function POST(
         urgency: aiMeta?.urgency ?? null,
         aiConfident: false,
         title: userMessage.content.slice(0, 80),
+        createdAt: issueStartedAt,
       },
     });
 

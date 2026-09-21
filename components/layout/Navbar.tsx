@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { getCurrentUserRole } from "@/lib/current-user-role";
+import { PendingSubmitButton } from "@/components/feedback/PendingSubmitButton";
 
 function Icon({ name }: { name: "chat" | "ticket" | "users" | "logout" | "key" | "faq" | "report" }) {
   const paths = {
@@ -64,7 +65,7 @@ export async function Navbar() {
         <div className="user-header-end">
           {account}
           <form action={async () => { "use server"; await signOut(); }}>
-            <button className="top-logout" type="submit" aria-label="ออกจากระบบ"><Icon name="logout" /></button>
+            <PendingSubmitButton className="top-logout" label="กำลังออกจากระบบ..."><Icon name="logout" /></PendingSubmitButton>
           </form>
         </div>
       </header>
@@ -98,9 +99,9 @@ export async function Navbar() {
             <span>{session.user.email}</span>
           </span>
           <form action={async () => { "use server"; await signOut(); }}>
-            <button className="sidebar-signout-icon" type="submit" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+            <PendingSubmitButton className="sidebar-signout-icon" label="กำลังออกจากระบบ..." title="ออกจากระบบ">
               <Icon name="logout" />
-            </button>
+            </PendingSubmitButton>
           </form>
         </div>
       </aside>

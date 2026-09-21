@@ -9,6 +9,7 @@ export interface ChatAiMeta {
   urgency: string;
   confident: boolean;
   suggestedFaqId: string | null;
+  startedAt?: string;
   userFeedback?: "resolved" | "escalated";
   resolvedAt?: string;
 }
@@ -47,13 +48,17 @@ interface EscalateApiResponse {
 }
 
 interface ResolveApiResponse {
+  ticketId?: string;
   message?: ChatMessage;
+  userMessage?: ChatMessage;
+  aiMessage?: ChatMessage;
   error?: string;
 }
 
 export function useChatMessages(pollIntervalMs = 4000) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isReplying, setIsReplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -113,12 +118,20 @@ export function useChatMessages(pollIntervalMs = 4000) {
         createdAt: new Date().toISOString(),
       };
 
+      // Keep the optimistic message in the same store used by polling merges.
+      // Otherwise a GET poll that finishes while AI is replying can temporarily
+      // replace the UI with the older server list and make this message vanish.
+      stickyMessagesRef.current.set(temporaryMessage.id, temporaryMessage);
       setMessages((current) => [...current, temporaryMessage]);
+      setIsReplying(true);
 
       try {
         const response = await fetch("/api/messages", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Skip-Global-Activity": "true",
+          },
           body: JSON.stringify({ content: trimmedContent }),
         });
         const data = (await response.json()) as SendMessageApiResponse;
@@ -127,9 +140,24 @@ export function useChatMessages(pollIntervalMs = 4000) {
           throw new Error(data.error ?? "ไม่สามารถส่งข้อความได้");
         }
 
-        if (data.ticketId && data.userMessage && data.aiMessage) {
+        if (data.userMessage && data.aiMessage) {
+          stickyMessagesRef.current.delete(temporaryMessage.id);
           stickyMessagesRef.current.set(data.userMessage.id, data.userMessage);
           stickyMessagesRef.current.set(data.aiMessage.id, data.aiMessage);
+
+          setMessages((current) => {
+            const merged = new Map(
+              current
+                .filter((message) => message.id !== temporaryMessage.id)
+                .map((message) => [message.id, message]),
+            );
+            merged.set(data.userMessage!.id, data.userMessage!);
+            merged.set(data.aiMessage!.id, data.aiMessage!);
+            return Array.from(merged.values()).sort(
+              (a, b) =>
+                new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+            );
+          });
         }
 
         setError(null);
@@ -137,6 +165,7 @@ export function useChatMessages(pollIntervalMs = 4000) {
 
         return { ticketId: data.ticketId ?? null };
       } catch (cause) {
+        stickyMessagesRef.current.delete(temporaryMessage.id);
         setMessages((current) =>
           current.filter((message) => message.id !== temporaryMessage.id),
         );
@@ -144,6 +173,8 @@ export function useChatMessages(pollIntervalMs = 4000) {
           cause instanceof Error ? cause.message : "ไม่สามารถส่งข้อความได้";
         setError(message);
         throw cause;
+      } finally {
+        setIsReplying(false);
       }
     },
     [fetchMessages],
@@ -154,6 +185,7 @@ export function useChatMessages(pollIntervalMs = 4000) {
       try {
         const response = await fetch(`/api/messages/${aiMessageId}/escalate`, {
           method: "POST",
+          headers: { "X-Skip-Global-Activity": "true" },
         });
         const data = (await response.json()) as EscalateApiResponse;
 
@@ -181,10 +213,11 @@ export function useChatMessages(pollIntervalMs = 4000) {
   );
 
   const resolveMessage = useCallback(
-    async (aiMessageId: string): Promise<void> => {
+    async (aiMessageId: string): Promise<SendMessageResult> => {
       try {
         const response = await fetch(`/api/messages/${aiMessageId}/resolve`, {
           method: "POST",
+          headers: { "X-Skip-Global-Activity": "true" },
         });
         const data = (await response.json()) as ResolveApiResponse;
 
@@ -193,6 +226,7 @@ export function useChatMessages(pollIntervalMs = 4000) {
         }
 
         if (data.message) {
+          stickyMessagesRef.current.set(data.message.id, data.message);
           setMessages((current) =>
             current.map((message) =>
               message.id === data.message?.id ? data.message : message,
@@ -202,6 +236,7 @@ export function useChatMessages(pollIntervalMs = 4000) {
 
         setError(null);
         await fetchMessages();
+        return { ticketId: data.ticketId ?? null };
       } catch (cause) {
         const message =
           cause instanceof Error
@@ -230,6 +265,7 @@ export function useChatMessages(pollIntervalMs = 4000) {
     escalateMessage,
     resolveMessage,
     loading,
+    isReplying,
     error,
   };
 }

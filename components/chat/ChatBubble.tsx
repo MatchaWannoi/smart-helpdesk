@@ -2,19 +2,28 @@
 
 import { useState } from "react";
 import type { ChatMessage } from "@/hooks/useChatMessages";
+import { ResolutionTime } from "@/components/tickets/ResolutionTime";
 
 interface ChatBubbleProps {
   message: ChatMessage;
+  currentUserId?: string;
+  viewerRole?: "USER" | "STAFF";
   onEscalate?: (message: ChatMessage) => Promise<void>;
   onResolve?: (message: ChatMessage) => Promise<void>;
 }
 
 export function ChatBubble({
   message,
+  currentUserId,
+  viewerRole,
   onEscalate,
   onResolve,
 }: ChatBubbleProps) {
-  const isUser = message.senderType === "USER";
+  const isUser = viewerRole === "STAFF"
+    ? message.senderType === "AI" || message.senderId === currentUserId || message.senderId === "current-user"
+    : currentUserId
+      ? message.senderId === currentUserId || message.senderId === "current-user"
+      : message.senderType === "USER";
   const isAi = message.senderType === "AI";
   const [feedback, setFeedback] = useState<"resolved" | "escalated" | null>(
     message.aiMeta?.userFeedback ?? null,
@@ -98,9 +107,16 @@ export function ChatBubble({
         )}
 
         {feedback === "resolved" && (
-          <p className="mt-1 ml-1 text-xs text-green-600 dark:text-green-400">
-            ขอบคุณสำหรับการยืนยันค่ะ
-          </p>
+          <div className="mt-2 ml-1 flex flex-wrap items-center gap-2 text-xs text-green-600 dark:text-green-400">
+            <span>บันทึกแล้วว่าแก้ไขได้ด้วยคำแนะนำจาก AI</span>
+            {message.aiMeta?.startedAt && message.aiMeta?.resolvedAt && (
+              <ResolutionTime
+                startedAt={message.aiMeta.startedAt}
+                endedAt={message.aiMeta.resolvedAt}
+                compact
+              />
+            )}
+          </div>
         )}
 
         {feedback === "escalated" && (

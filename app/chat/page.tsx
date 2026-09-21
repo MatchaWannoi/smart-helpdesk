@@ -4,19 +4,25 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { useConfirmDialog } from "@/components/feedback/ConfirmDialogProvider";
 import { useChatMessages, type ChatMessage } from "@/hooks/useChatMessages";
 
 export default function ChatPage() {
+  const confirmAction = useConfirmDialog();
   const {
     messages,
     sendMessage,
     escalateMessage,
     resolveMessage,
     loading,
+    isReplying,
     error,
   } = useChatMessages();
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [ticketBanner, setTicketBanner] = useState<string | null>(null);
+  const [ticketBanner, setTicketBanner] = useState<{
+    id: string;
+    kind: "escalated" | "resolved";
+  } | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,19 +31,22 @@ export default function ChatPage() {
   const handleSend = async (content: string) => {
     const result = await sendMessage(content);
     if (result.ticketId) {
-      setTicketBanner(result.ticketId);
+      setTicketBanner({ id: result.ticketId, kind: "escalated" });
     }
   };
 
   const handleEscalate = async (message: ChatMessage) => {
+    if (!(await confirmAction({ title: "ส่งปัญหาให้เจ้าหน้าที่หรือไม่?", description: "ระบบจะสร้างคำร้องและส่งข้อมูลการสนทนาให้เจ้าหน้าที่ดูแลต่อ", confirmLabel: "ส่งให้เจ้าหน้าที่" }))) return;
     const result = await escalateMessage(message.id);
     if (result.ticketId) {
-      setTicketBanner(result.ticketId);
+      setTicketBanner({ id: result.ticketId, kind: "escalated" });
     }
   };
 
   const handleResolve = async (message: ChatMessage) => {
-    await resolveMessage(message.id);
+    if (!(await confirmAction({ title: "ยืนยันว่าแก้ปัญหาได้แล้วหรือไม่?", description: "ระบบจะบันทึกว่าคำแนะนำจาก AI แก้ปัญหาได้สำเร็จ", confirmLabel: "ยืนยันว่าแก้ได้" }))) return;
+    const result = await resolveMessage(message.id);
+    if (result.ticketId) setTicketBanner({ id: result.ticketId, kind: "resolved" });
   };
 
   const suggestions = [
@@ -57,10 +66,12 @@ export default function ChatPage() {
       {ticketBanner && (
         <div className="ticket-banner">
           <span>
-            ระบบสร้าง ticket และส่งต่อให้เจ้าหน้าที่แล้ว
+            {ticketBanner.kind === "resolved"
+              ? "บันทึกว่าแก้ไขสำเร็จและหยุดจับเวลาแล้ว"
+              : "ระบบสร้าง ticket และส่งต่อให้เจ้าหน้าที่แล้ว"}
           </span>
           <Link
-            href={`/tickets/${ticketBanner}`}
+            href={`/tickets/${ticketBanner.id}`}
             className="shrink-0 font-medium underline"
           >
             ดู ticket
@@ -95,6 +106,15 @@ export default function ChatPage() {
               onResolve={handleResolve}
             />
           ))}
+          {isReplying && (
+            <div className="ai-typing" role="status" aria-live="polite">
+              <span className="ai-typing-avatar" aria-hidden="true">✦</span>
+              <div>
+                <small>AI Assistant กำลังวิเคราะห์และพิมพ์คำตอบ</small>
+                <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
+              </div>
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
 

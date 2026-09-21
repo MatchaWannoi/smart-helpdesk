@@ -24,6 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const issueStartedAt = new Date();
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
             aiConfident: false,
             // ใช้ข้อความแรกที่ผู้ใช้พิมพ์เป็น title เบื้องต้น (ตัดความยาวไว้กันยาวเกิน)
             title: trimmedContent.slice(0, 80),
+            createdAt: issueStartedAt,
           },
         });
         ticketId = ticket.id;
@@ -105,6 +107,7 @@ export async function POST(request: Request) {
             urgency: aiResult.urgency,
             confident: aiResult.confident,
             suggestedFaqId: aiResult.suggestedFaqId,
+            startedAt: issueStartedAt.toISOString(),
           },
         },
       });

@@ -2,6 +2,8 @@
 
 import { signOut } from "next-auth/react";
 import { useState } from "react";
+import { PageTransitionPopup } from "@/components/feedback/PageTransitionPopup";
+import { useConfirmDialog } from "@/components/feedback/ConfirmDialogProvider";
 
 export function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -9,6 +11,7 @@ export function ChangePasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const confirmAction = useConfirmDialog();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,11 +22,17 @@ export function ChangePasswordForm() {
       return;
     }
 
+    if (!(await confirmAction({
+      title: "เปลี่ยนรหัสผ่านหรือไม่?",
+      description: "หลังบันทึกรหัสผ่านใหม่ ระบบจะนำคุณออกจากระบบและให้เข้าสู่ระบบอีกครั้ง",
+      confirmLabel: "เปลี่ยนรหัสผ่าน",
+    }))) return;
+
     setSubmitting(true);
     try {
       const response = await fetch("/api/account/password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Skip-Global-Activity": "true" },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       const data = (await response.json()) as { error?: string };
@@ -41,8 +50,15 @@ export function ChangePasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+      {submitting && (
+        <PageTransitionPopup
+          title="กำลังเปลี่ยนรหัสผ่าน..."
+          description="กรุณารอสักครู่ ระบบกำลังบันทึกและพาคุณเข้าสู่หน้า Login"
+          portalToBody
+        />
+      )}
       <label className="flex flex-col gap-1 text-sm">
-        รหัสผ่านชั่วคราว
+        รหัสผ่านปัจจุบัน
         <input
           type="password"
           value={currentPassword}

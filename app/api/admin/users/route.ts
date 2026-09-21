@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { AI_SYSTEM_USER_ID } from "@/lib/constants";
 import { getCurrentUserRole } from "@/lib/current-user-role";
+import { getManagedUserInitialPassword } from "@/lib/managed-user-password";
 import { prisma } from "@/lib/prisma";
 
 const CREATABLE_ROLES = new Set<Role>([Role.USER, Role.STAFF]);
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
 
   // ใช้ส่วนหน้า @ ของอีเมลเป็นรหัสผ่านเริ่มต้นตาม workflow ขององค์กร
   // และบังคับเปลี่ยนทันทีด้วย mustChangePassword ก่อนเข้าใช้งานส่วนอื่น
-  const temporaryPassword = normalizedEmail.split("@")[0];
+  const temporaryPassword = getManagedUserInitialPassword(normalizedEmail);
 
   try {
     const user = await prisma.user.create({

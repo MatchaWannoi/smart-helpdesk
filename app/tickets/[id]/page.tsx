@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { TicketStatus, type Category, type Urgency } from "@prisma/client";
 import { auth } from "@/auth";
-import { ChatBubble } from "@/components/chat/ChatBubble";
+import { TicketMessageThread } from "@/components/tickets/TicketMessageThread";
 import type { ChatMessage } from "@/hooks/useChatMessages";
 import { prisma } from "@/lib/prisma";
 import { UserReplyForm } from "./UserReplyForm";
 import { EvaluationForm } from "./EvaluationForm";
+import { ResolutionTime } from "@/components/tickets/ResolutionTime";
+import { TicketStatusRefresh } from "@/components/tickets/TicketStatusRefresh";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: "รอมอบหมาย",
@@ -76,6 +78,14 @@ export default async function TicketDetailPage({
 
   return (
     <main className="portal-page ticket-detail-page">
+      <TicketStatusRefresh
+        ticketId={ticket.id}
+        initialSnapshot={JSON.stringify({
+          status: ticket.status,
+          assignedStaffId: ticket.assignedStaffId,
+          updatedAt: ticket.updatedAt.toISOString(),
+        })}
+      />
       <Link
         href="/tickets"
         className="portal-back"
@@ -103,6 +113,7 @@ export default async function TicketDetailPage({
           <div><dt>หมวดหมู่</dt><dd>{ticket.category ? CATEGORY_LABEL[ticket.category] : "ไม่ระบุ"}</dd></div>
           <div><dt>ความเร่งด่วน</dt><dd>{ticket.urgency ? URGENCY_LABEL[ticket.urgency] : "ไม่ระบุ"}</dd></div>
           <div><dt>เจ้าหน้าที่</dt><dd>{ticket.assignedStaff?.name ?? "ยังไม่ได้มอบหมาย"}</dd></div>
+          <div><dt>ระยะเวลาดำเนินการ</dt><dd><ResolutionTime startedAt={ticket.createdAt.toISOString()} endedAt={ticket.closedAt?.toISOString()} /></dd></div>
         </dl>
 
         {ticket.resolutionNote && (
@@ -114,16 +125,13 @@ export default async function TicketDetailPage({
       </section>
 
       <section className="ticket-conversation">
-        <div className="section-heading"><span>ประวัติการสนทนา</span><small>{chatMessages.length} ข้อความ</small></div>
-        {chatMessages.length === 0 ? (
-          <p className="text-sm text-zinc-500">ยังไม่มีข้อความใน ticket นี้</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {chatMessages.map((message) => (
-              <ChatBubble key={message.id} message={message} />
-            ))}
-          </div>
-        )}
+        <TicketMessageThread
+          ticketId={ticket.id}
+          endpoint={`/api/tickets/${ticket.id}/messages`}
+          initialMessages={chatMessages}
+          currentUserId={session.user.id}
+          viewerRole="USER"
+        />
       </section>
 
       {ticket.status === TicketStatus.RESOLVED && <EvaluationForm ticketId={ticket.id} />}

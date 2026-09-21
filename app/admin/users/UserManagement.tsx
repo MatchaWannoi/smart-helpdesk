@@ -1,8 +1,10 @@
 "use client";
 
 import type { Category, Role } from "@prisma/client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PageTransitionPopup } from "@/components/feedback/PageTransitionPopup";
+import { useConfirmDialog } from "@/components/feedback/ConfirmDialogProvider";
+import { useRenderedOperation } from "@/hooks/useRenderedOperation";
 
 type ManagedUser = {
   id: string;
@@ -25,26 +27,33 @@ const CATEGORY_LABEL: Record<Category, string> = {
 };
 
 export function UserManagement({ users }: { users: ManagedUser[] }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"USER" | "STAFF">("USER");
   const [specialty, setSpecialty] = useState<Category>("NETWORK");
   const [notice, setNotice] = useState<CredentialNotice>(null);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const confirmAction = useConfirmDialog();
+  const { operation, isWorking, begin, cancel, finishWithRefresh } = useRenderedOperation();
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
+    if (!(await confirmAction({
+      title: "ยืนยันการสร้างบัญชี",
+      description: `ระบบจะสร้างบัญชีสำหรับ ${email.trim().toLowerCase()} และออกรหัสผ่านเริ่มต้นให้`,
+      confirmLabel: "สร้างบัญชี",
+    }))) return;
     setError(null);
     setNotice(null);
+    begin({
+      title: "กำลังสร้างบัญชีผู้ใช้งาน...",
+      description: "กรุณารอสักครู่ ระบบกำลังสร้างบัญชีและแสดงรายการล่าสุด",
+    });
 
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Skip-Global-Activity": "true" },
         body: JSON.stringify({ name, email, role, specialty: role === "STAFF" ? specialty : null }),
       });
       const data = (await response.json()) as { error?: string; temporaryPassword?: string };
@@ -56,23 +65,41 @@ export function UserManagement({ users }: { users: ManagedUser[] }) {
       setName("");
       setEmail("");
       setRole("USER");
-      router.refresh();
+      finishWithRefresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "สร้างบัญชีไม่สำเร็จ");
-    } finally {
-      setSubmitting(false);
+      cancel();
     }
   }
 
   async function updateUser(user: ManagedUser, action: "setActive" | "resetPassword") {
-    setBusyId(user.id);
+    const confirmation = action === "resetPassword"
+      ? `ยืนยันการรีเซ็ตรหัสผ่านของ ${user.name} ใช่หรือไม่?`
+      : user.isActive
+        ? `ยืนยันการระงับบัญชี ${user.name} ใช่หรือไม่?`
+        : `ยืนยันการเปิดใช้งานบัญชี ${user.name} ใช่หรือไม่?`;
+    if (!(await confirmAction({
+      title: action === "resetPassword" ? "รีเซ็ตรหัสผ่านหรือไม่?" : user.isActive ? "ระงับบัญชีหรือไม่?" : "เปิดใช้งานบัญชีหรือไม่?",
+      description: confirmation,
+      confirmLabel: action === "resetPassword" ? "รีเซ็ตรหัสผ่าน" : user.isActive ? "ระงับบัญชี" : "เปิดใช้งาน",
+      variant: action === "setActive" && user.isActive ? "danger" : "default",
+    }))) return;
+
     setError(null);
     setNotice(null);
+    begin({
+      title: action === "resetPassword"
+        ? "กำลังรีเซ็ตรหัสผ่าน..."
+        : user.isActive
+          ? "กำลังระงับบัญชีผู้ใช้งาน..."
+          : "กำลังเปิดใช้งานบัญชี...",
+      description: "กรุณารอสักครู่ ระบบกำลังบันทึกและแสดงข้อมูลล่าสุด",
+    });
 
     try {
       const response = await fetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Skip-Global-Activity": "true" },
         body: JSON.stringify(
           action === "setActive"
             ? { action, active: !user.isActive }
@@ -85,16 +112,46 @@ export function UserManagement({ users }: { users: ManagedUser[] }) {
       if (data.temporaryPassword) {
         setNotice({ email: user.email, password: data.temporaryPassword });
       }
-      router.refresh();
+      finishWithRefresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "อัปเดตบัญชีไม่สำเร็จ");
-    } finally {
-      setBusyId(null);
+      cancel();
+    }
+  }
+
+  async function deleteUser(user: ManagedUser) {
+    if (!(await confirmAction({
+      title: "ลบบัญชีอย่างถาวรหรือไม่?",
+      description: `${user.name} (${user.email}) จะไม่สามารถเข้าสู่ระบบได้อีก และการลบไม่สามารถย้อนกลับได้`,
+      confirmLabel: "ลบบัญชี",
+      variant: "danger",
+    }))) return;
+
+    setError(null);
+    setNotice(null);
+    begin({
+      title: "กำลังลบบัญชีผู้ใช้งาน...",
+      description: "กรุณารอสักครู่ ระบบกำลังลบและแสดงรายการล่าสุด",
+    });
+
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: "DELETE",
+        headers: { "X-Skip-Global-Activity": "true" },
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "ลบบัญชีไม่สำเร็จ");
+      finishWithRefresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "ลบบัญชีไม่สำเร็จ");
+      cancel();
     }
   }
 
   return (
-    <div className="user-management-grid">
+    <>
+      {operation && <PageTransitionPopup {...operation} portalToBody />}
+      <div className="user-management-grid">
       <section className="managed-panel user-create-panel">
         <div className="managed-panel-heading">
           <span>NEW ACCOUNT</span>
@@ -146,8 +203,8 @@ export function UserManagement({ users }: { users: ManagedUser[] }) {
               </select>
             </label>
           )}
-          <button type="submit" disabled={submitting} className="managed-primary">
-            {submitting ? "กำลังสร้าง..." : "+ สร้างบัญชี"}
+          <button type="submit" disabled={isWorking} className="managed-primary">
+            {isWorking ? "กำลังดำเนินการ..." : "+ สร้างบัญชี"}
           </button>
         </form>
 
@@ -194,8 +251,9 @@ export function UserManagement({ users }: { users: ManagedUser[] }) {
                       <span className="bootstrap-note">จัดการผ่าน bootstrap</span>
                     ) : (
                       <div className="managed-actions">
-                        <button type="button" disabled={busyId === user.id} onClick={() => void updateUser(user, "resetPassword")} className="managed-action">รีเซ็ตรหัสผ่าน</button>
-                        <button type="button" disabled={busyId === user.id} onClick={() => void updateUser(user, "setActive")} className={`managed-action${user.isActive ? " danger" : ""}`}>{user.isActive ? "ระงับบัญชี" : "เปิดใช้งาน"}</button>
+                        <button type="button" disabled={isWorking} onClick={() => void updateUser(user, "resetPassword")} className="managed-action">รีเซ็ตรหัสผ่าน</button>
+                        <button type="button" disabled={isWorking} onClick={() => void updateUser(user, "setActive")} className={`managed-action${user.isActive ? " danger" : ""}`}>{user.isActive ? "ระงับบัญชี" : "เปิดใช้งาน"}</button>
+                        <button type="button" disabled={isWorking} onClick={() => void deleteUser(user)} className="managed-action danger">ลบบัญชี</button>
                       </div>
                     )}
                   </td>
@@ -205,6 +263,7 @@ export function UserManagement({ users }: { users: ManagedUser[] }) {
           </table>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

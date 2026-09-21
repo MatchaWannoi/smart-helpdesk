@@ -1,8 +1,10 @@
 "use client";
 
 import type { Category } from "@prisma/client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PageTransitionPopup } from "@/components/feedback/PageTransitionPopup";
+import { useConfirmDialog } from "@/components/feedback/ConfirmDialogProvider";
+import { useRenderedOperation } from "@/hooks/useRenderedOperation";
 
 interface StaffOption {
   id: string;
@@ -32,10 +34,10 @@ export function AssignStaffForm({
   suggestedCategory,
   isLocked = false,
 }: AssignStaffFormProps) {
-  const router = useRouter();
   const [staffId, setStaffId] = useState(currentStaffId ?? "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirmAction = useConfirmDialog();
+  const { operation, isWorking, begin, cancel, finishWithRefresh } = useRenderedOperation();
 
   if (isLocked) {
     return (
@@ -47,14 +49,26 @@ export function AssignStaffForm({
     if (!staffId) {
       return;
     }
+    const selectedStaff = staffList.find((staff) => staff.id === staffId);
+    if (!(await confirmAction({
+      title: currentStaffId ? "เปลี่ยนเจ้าหน้าที่รับผิดชอบหรือไม่?" : "มอบหมายงานนี้หรือไม่?",
+      description: `คำร้องนี้จะถูกมอบหมายให้ ${selectedStaff?.name ?? "เจ้าหน้าที่ที่เลือก"}`,
+      confirmLabel: currentStaffId ? "เปลี่ยนเจ้าหน้าที่" : "มอบหมายงาน",
+    }))) return;
 
-    setIsSubmitting(true);
     setError(null);
+    begin({
+      title: currentStaffId ? "กำลังเปลี่ยนเจ้าหน้าที่..." : "กำลังมอบหมายงานให้เจ้าหน้าที่...",
+      description: "กรุณารอสักครู่ ระบบกำลังบันทึกและแสดงข้อมูลล่าสุด",
+    });
 
     try {
       const response = await fetch(`/api/admin/tickets/${ticketId}/assign`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Skip-Global-Activity": "true",
+        },
         body: JSON.stringify({ staffId }),
       });
       const data = (await response.json()) as { error?: string };
@@ -63,20 +77,26 @@ export function AssignStaffForm({
         throw new Error(data.error ?? "Assignment failed");
       }
 
-      router.refresh();
+      finishWithRefresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Assignment failed");
-    } finally {
-      setIsSubmitting(false);
+      cancel();
     }
   }
 
   return (
     <div className="assign-staff-form">
+      {operation && (
+        <PageTransitionPopup
+          {...operation}
+          portalToBody
+        />
+      )}
       <select
         value={staffId}
         onChange={(event) => setStaffId(event.target.value)}
         className="assign-staff-select"
+        disabled={isWorking}
       >
         <option value="">เลือกเจ้าหน้าที่...</option>
         {staffList.map((staff) => {
@@ -96,11 +116,11 @@ export function AssignStaffForm({
       <button
         type="button"
         onClick={() => void handleAssign()}
-        disabled={isSubmitting || !staffId}
+        disabled={isWorking || !staffId}
         className="assign-staff-button"
       >
-        {isSubmitting
-          ? "กำลังบันทึก..."
+        {isWorking
+          ? "กำลังมอบหมายงาน..."
           : currentStaffId
             ? "เปลี่ยนเจ้าหน้าที่"
             : "มอบหมาย"}

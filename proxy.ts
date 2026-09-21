@@ -36,14 +36,6 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/change-password", nextUrl));
   }
 
-  if (
-    isLoggedIn &&
-    !session?.user?.mustChangePassword &&
-    path === "/change-password"
-  ) {
-    return NextResponse.redirect(new URL("/chat", nextUrl));
-  }
-
   // ----- กรณี 1: หน้า login/register แต่ login อยู่แล้ว -----
   // เช่น login แล้วยังพยายามเข้า /login ซ้ำ → เด้งไป /chat แทน
   if (isGuestPath && isLoggedIn) {
