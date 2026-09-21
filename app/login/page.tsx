@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { PageTransitionPopup } from "@/components/feedback/PageTransitionPopup";
 
 function LoginIcon({ name }: { name: "enter" | "mail" | "lock" | "arrow" }) {
   const paths = {
@@ -26,15 +27,33 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const result = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
-    if (result?.error) return setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-    router.push("/");
-    router.refresh();
+
+    try {
+      const result = await signIn("credentials", { email, password, redirect: false });
+
+      if (result?.error) {
+        setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        setLoading(false);
+        return;
+      }
+
+      // Keep the overlay visible while the authenticated page is rendering.
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง");
+      setLoading(false);
+    }
   }
 
   return (
     <main className="login-page">
+      {loading && (
+        <PageTransitionPopup
+          title="กำลังเข้าสู่ระบบ..."
+          description="กำลังตรวจสอบบัญชีและเตรียมหน้าสำหรับคุณ"
+        />
+      )}
       <section className="login-intro">
         <div className="login-brand-line"><span className="mini-bot">✦</span><span><b>SMART HELPDESK</b><small>with AI</small></span></div>
         <div>
@@ -49,9 +68,9 @@ export default function LoginPage() {
           <div className="login-heading"><span className="login-icon"><LoginIcon name="enter" /></span><div><h2>ยินดีต้อนรับ</h2><p>เข้าสู่ระบบเพื่อใช้งาน Smart Helpdesk</p></div></div>
           <form onSubmit={handleSubmit} className="form-stack">
             <label htmlFor="email">อีเมล</label>
-            <div className="input-wrap"><span><LoginIcon name="mail" /></span><input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" required /></div>
+            <div className="input-wrap"><span><LoginIcon name="mail" /></span><input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" required disabled={loading} /></div>
             <label htmlFor="password">รหัสผ่าน</label>
-            <div className="input-wrap"><span><LoginIcon name="lock" /></span><input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="กรอกรหัสผ่านของคุณ" required /></div>
+            <div className="input-wrap"><span><LoginIcon name="lock" /></span><input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="กรอกรหัสผ่านของคุณ" required disabled={loading} /></div>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="login-submit" type="submit" disabled={loading}>{loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}<span><LoginIcon name="arrow" /></span></button>
           </form>

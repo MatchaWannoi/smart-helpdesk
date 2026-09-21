@@ -9,6 +9,14 @@ const LOCKED_STATUSES = new Set<TicketStatus>([
   TicketStatus.CLOSED,
 ]);
 
+const STATUS_PROGRESS: Record<TicketStatus, number> = {
+  [TicketStatus.OPEN]: 0,
+  [TicketStatus.ASSIGNED]: 1,
+  [TicketStatus.IN_PROGRESS]: 2,
+  [TicketStatus.RESOLVED]: 3,
+  [TicketStatus.CLOSED]: 4,
+};
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -70,7 +78,11 @@ export async function POST(
     where: { id },
     data: {
       assignedStaffId: staff.id,
-      status: TicketStatus.ASSIGNED,
+      // Reassigning an active ticket must not move it backwards.
+      status:
+        STATUS_PROGRESS[ticket.status] > STATUS_PROGRESS[TicketStatus.ASSIGNED]
+          ? ticket.status
+          : TicketStatus.ASSIGNED,
     },
     include: {
       assignedStaff: { select: { id: true, name: true, specialty: true } },

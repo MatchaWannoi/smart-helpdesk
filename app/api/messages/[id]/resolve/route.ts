@@ -1,13 +1,14 @@
-import { SenderType } from "@prisma/client";
+import { Category, SenderType, Urgency } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 type StoredAiMeta = {
-  category?: string | null;
-  urgency?: string | null;
+  category?: Category | null;
+  urgency?: Urgency | null;
   confident?: boolean;
   suggestedFaqId?: string | null;
+  startedAt?: string;
   userFeedback?: "resolved" | "escalated";
   resolvedAt?: string;
 };
@@ -57,16 +58,42 @@ export async function POST(
     );
   }
 
+  if (aiMeta.userFeedback) {
+    return NextResponse.json(
+      { error: "ข้อความนี้ได้รับการยืนยันผลแล้ว" },
+      { status: 409 },
+    );
+  }
+
+  const userMessage = await prisma.message.findFirst({
+    where: {
+      userId: session.user.id,
+      ticketId: null,
+      senderType: SenderType.USER,
+      createdAt: { lte: aiMessage.createdAt },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!userMessage) {
+    return NextResponse.json(
+      { error: "หาข้อความต้นเรื่องไม่เจอ" },
+      { status: 400 },
+    );
+  }
+
+  const resolvedAt = new Date();
   const updatedMessage = await prisma.message.update({
     where: { id },
     data: {
       aiMeta: {
         ...aiMeta,
+        startedAt: aiMeta.startedAt ?? userMessage.createdAt.toISOString(),
         userFeedback: "resolved",
-        resolvedAt: new Date().toISOString(),
+        resolvedAt: resolvedAt.toISOString(),
       },
     },
   });
 
-  return NextResponse.json({ message: updatedMessage });
+  return NextResponse.json({ message: updatedMessage, ticketId: null });
 }

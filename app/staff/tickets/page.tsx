@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getCurrentUserRole } from "@/lib/current-user-role";
 import { prisma } from "@/lib/prisma";
+import { ResolutionTime } from "@/components/tickets/ResolutionTime";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: "รอมอบหมาย",
@@ -105,7 +106,7 @@ export default async function StaffTicketsPage({
 
       <section className="ticket-overview" aria-label="ภาพรวมงาน">
         <article><span>รอดำเนินการ</span><strong>{waiting}</strong><small>งานที่รับเข้ามาใหม่</small></article>
-        <article><span>กำลังแก้ไข</span><strong>{inProgress}</strong><small>งานที่กำลังดำเนินการ</small></article>
+        <article><span>กำลังดูแล</span><strong>{inProgress}</strong><small>งานที่กำลังดำเนินการ</small></article>
         <article><span>เสร็จสิ้น</span><strong>{completed}</strong><small>งานที่ดูแลเรียบร้อย</small></article>
       </section>
 
@@ -175,6 +176,11 @@ export default async function StaffTicketsPage({
                     <span className={`meta-urgency urgency-${ticket.urgency.toLowerCase()}`}>ความเร่งด่วน: {URGENCY_LABEL[ticket.urgency]}</span>
                   )}
                   <span className="meta-messages">ข้อความ: {ticket._count.messages}</span>
+                  <ResolutionTime
+                    startedAt={ticket.createdAt.toISOString()}
+                    endedAt={ticket.closedAt?.toISOString()}
+                    compact
+                  />
                 </div>
                 <span className="ticket-card-action">
                   เปิดงาน <b aria-hidden="true">→</b>

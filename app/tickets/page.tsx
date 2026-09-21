@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { TicketStatus, type Category, type Urgency } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { ResolutionTime } from "@/components/tickets/ResolutionTime";
+import { TicketStatusRefresh } from "@/components/tickets/TicketStatusRefresh";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: "รอมอบหมาย",
@@ -71,7 +73,7 @@ export default async function TicketsPage({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     include: {
-      assignedStaff: { select: { name: true } },
+      assignedStaff: { select: { id: true, name: true } },
       _count: { select: { messages: true } },
     },
   });
@@ -93,6 +95,16 @@ export default async function TicketsPage({
 
   return (
     <main className="portal-page ticket-list-page">
+      <TicketStatusRefresh
+        initialSnapshot={JSON.stringify(
+          tickets.map((ticket) => [
+            ticket.id,
+            ticket.status,
+            ticket.assignedStaff?.id ?? null,
+            ticket.updatedAt.toISOString(),
+          ]),
+        )}
+      />
       <div className="portal-heading">
         <div>
           <span className="portal-kicker">MY SUPPORT</span>
@@ -111,7 +123,7 @@ export default async function TicketsPage({
 
       <section className="ticket-overview" aria-label="ภาพรวมคำร้อง">
         <article><span>คำร้องทั้งหมด</span><strong>{tickets.length}</strong><small>รายการในระบบ</small></article>
-        <article><span>กำลังดูแล</span><strong>{activeTickets}</strong><small>อยู่ระหว่างดำเนินการ</small></article>
+        <article><span>กำลังแก้ไข</span><strong>{activeTickets}</strong><small>อยู่ระหว่างดำเนินการ</small></article>
         <article><span>ดำเนินการแล้ว</span><strong>{completedTickets}</strong><small>แก้ไขหรือปิดเคสแล้ว</small></article>
       </section>
 
@@ -182,6 +194,11 @@ export default async function TicketsPage({
                     <span className={`meta-urgency urgency-${ticket.urgency.toLowerCase()}`}>ความเร่งด่วน: {URGENCY_LABEL[ticket.urgency]}</span>
                   )}
                   <span className="meta-messages">ข้อความ: {ticket._count.messages}</span>
+                  <ResolutionTime
+                    startedAt={ticket.createdAt.toISOString()}
+                    endedAt={ticket.closedAt?.toISOString()}
+                    compact
+                  />
                   <span className="meta-assignee">
                     เจ้าหน้าที่: {ticket.assignedStaff?.name ?? "ยังไม่ได้มอบหมาย"}
                   </span>

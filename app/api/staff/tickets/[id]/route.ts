@@ -10,6 +10,14 @@ const VALID_STAFF_STATUSES = new Set<TicketStatus>([
   TicketStatus.RESOLVED,
 ]);
 
+const STATUS_PROGRESS: Record<TicketStatus, number> = {
+  [TicketStatus.OPEN]: 0,
+  [TicketStatus.ASSIGNED]: 1,
+  [TicketStatus.IN_PROGRESS]: 2,
+  [TicketStatus.RESOLVED]: 3,
+  [TicketStatus.CLOSED]: 4,
+};
+
 async function authorizeStaff() {
   const session = await auth();
 
@@ -103,6 +111,12 @@ export async function PATCH(
     }
 
     data.status = status as TicketStatus;
+    if (STATUS_PROGRESS[data.status] < STATUS_PROGRESS[ticket.status]) {
+      return NextResponse.json(
+        { error: "Ticket status cannot move backwards" },
+        { status: 409 },
+      );
+    }
     data.closedAt = status === TicketStatus.CLOSED ? new Date() : null;
   }
 

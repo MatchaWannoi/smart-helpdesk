@@ -2,12 +2,14 @@ import { Role, TicketStatus, type Category, type Urgency } from "@prisma/client"
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { ChatBubble } from "@/components/chat/ChatBubble";
+import { TicketMessageThread } from "@/components/tickets/TicketMessageThread";
 import type { ChatMessage } from "@/hooks/useChatMessages";
 import { getCurrentUserRole } from "@/lib/current-user-role";
 import { prisma } from "@/lib/prisma";
 import { StaffReplyForm } from "./StaffReplyForm";
 import { UpdateTicketForm } from "./UpdateTicketForm";
+import { ResolutionTime } from "@/components/tickets/ResolutionTime";
+import { TicketStatusRefresh } from "@/components/tickets/TicketStatusRefresh";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: "รอมอบหมาย",
@@ -79,6 +81,15 @@ export default async function StaffTicketDetailPage({
 
   return (
     <main className="portal-page ticket-detail-page staff-portal">
+      <TicketStatusRefresh
+        ticketId={ticket.id}
+        endpoint={`/api/staff/tickets/${ticket.id}`}
+        initialSnapshot={JSON.stringify({
+          status: ticket.status,
+          assignedStaffId: ticket.assignedStaffId,
+          updatedAt: ticket.updatedAt.toISOString(),
+        })}
+      />
       <Link
         href="/staff/tickets"
         className="portal-back"
@@ -106,6 +117,7 @@ export default async function StaffTicketDetailPage({
           <div><dt>สร้างเมื่อ</dt><dd>{formatDate(ticket.createdAt)}</dd></div>
           <div><dt>หมวดหมู่</dt><dd>{ticket.category ? CATEGORY_LABEL[ticket.category] : "ไม่ระบุ"}</dd></div>
           <div><dt>ความเร่งด่วน</dt><dd>{ticket.urgency ? URGENCY_LABEL[ticket.urgency] : "ไม่ระบุ"}</dd></div>
+          <div><dt>ระยะเวลาดำเนินการ</dt><dd><ResolutionTime startedAt={ticket.createdAt.toISOString()} endedAt={ticket.closedAt?.toISOString()} /></dd></div>
         </dl>
 
         <div className="staff-update-panel">
@@ -118,19 +130,19 @@ export default async function StaffTicketDetailPage({
       </section>
 
       <section className="ticket-conversation">
-        <div className="section-heading"><span>ประวัติการสนทนา</span><small>{chatMessages.length} ข้อความ</small></div>
-        {chatMessages.length === 0 ? (
-          <p className="text-sm text-zinc-500">ยังไม่มีข้อความใน ticket นี้</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {chatMessages.map((message) => (
-              <ChatBubble key={message.id} message={message} />
-            ))}
-          </div>
-        )}
+        <TicketMessageThread
+          ticketId={ticket.id}
+          endpoint={`/api/staff/tickets/${ticket.id}/messages`}
+          initialMessages={chatMessages}
+          currentUserId={session.user.id}
+          viewerRole="STAFF"
+        />
       </section>
 
-      <StaffReplyForm ticketId={ticket.id} />
+      <StaffReplyForm
+        ticketId={ticket.id}
+        disabled={ticket.status === TicketStatus.CLOSED}
+      />
     </main>
   );
 }
