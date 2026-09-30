@@ -142,7 +142,7 @@ export default async function AdminTicketsPage({
                     {ticket.title ?? "ไม่มีหัวข้อ"}
                   </h2>
                   <p>
-                    แจ้งโดย {ticket.user.name} ({ticket.user.email}) เมื่อ{" "}
+                    แจ้งโดย {ticket.user.name} เมื่อ{" "}
                     {formatDate(ticket.createdAt)}
                   </p>
                 </div>

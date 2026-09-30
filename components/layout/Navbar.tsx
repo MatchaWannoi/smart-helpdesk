@@ -3,7 +3,7 @@ import { auth, signOut } from "@/auth";
 import { getCurrentUserRole } from "@/lib/current-user-role";
 import { PendingSubmitButton } from "@/components/feedback/PendingSubmitButton";
 
-function Icon({ name }: { name: "chat" | "ticket" | "users" | "logout" | "key" | "faq" | "report" }) {
+function Icon({ name }: { name: "chat" | "ticket" | "users" | "logout" | "key" | "faq" }) {
   const paths = {
     chat: <path d="M4 5.5h16v10H9l-5 4v-14Z" />,
     ticket: <><path d="M5 4h14v16H5z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
@@ -11,7 +11,6 @@ function Icon({ name }: { name: "chat" | "ticket" | "users" | "logout" | "key" |
     logout: <><path d="M10 5H4v14h6M14 8l4 4-4 4M8 12h10" /></>,
     key: <><circle cx="8" cy="12" r="3" /><path d="M11 12h9M17 12v3M20 12v2" /></>,
     faq: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.4 2.4 0 1 1 3.3 2.2c-.8.4-1.1.9-1.1 1.8M12 17h.01" /></>,
-    report: <><path d="M5 20V10M12 20V4M19 20v-7" /><path d="M3 20h18" /></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" className="nav-icon" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
@@ -88,7 +87,6 @@ export async function Navbar() {
           <Link href="/admin/tickets"><Icon name="ticket" />จัดการคำร้อง</Link>
           <Link href="/admin/users"><Icon name="users" />จัดการผู้ใช้</Link>
           <Link href="/admin/faqs"><Icon name="faq" />จัดการ FAQ</Link>
-          <Link href="/admin/reports"><Icon name="report" />รายงาน</Link>
           <Link href="/change-password"><Icon name="key" />เปลี่ยนรหัสผ่าน</Link>
         </nav>
         <div className="sidebar-account">
